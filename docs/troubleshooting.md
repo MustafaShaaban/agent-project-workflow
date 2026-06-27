@@ -27,7 +27,7 @@ Remove only the project-local skill through the skills CLI when supported, or in
 
 ## Duplicate installation
 
-List global skills and inspect `%USERPROFILE%\.claude\skills` and `%USERPROFILE%\.codex\skills`. Use the removal command, clean only stale `project-workflow` directories if necessary, and install once.
+List global skills and inspect `%USERPROFILE%\.claude\skills`, `%USERPROFILE%\.agents\skills`, and any legacy `%USERPROFILE%\.codex\skills` directory. Use the removal command, clean only stale `project-workflow` directories if necessary, and install once.
 
 ## Wrong workspace or worktree
 

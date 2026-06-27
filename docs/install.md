@@ -60,7 +60,8 @@ Use the CLI removal command first. If a failed or old installation remains, insp
 
 ```powershell
 Get-ChildItem -Force "$HOME\.claude\skills"
-Get-ChildItem -Force "$HOME\.codex\skills"
+Get-ChildItem -Force "$HOME\.agents\skills"
+Get-ChildItem -Force "$HOME\.codex\skills" -ErrorAction SilentlyContinue
 ```
 
-Typical paths are `%USERPROFILE%\.claude\skills\project-workflow` and `%USERPROFILE%\.codex\skills\project-workflow`. Actual paths can vary by agent version; do not delete an entire skills directory.
+With the current `skills` CLI, typical copied paths are `%USERPROFILE%\.claude\skills\project-workflow` for Claude Code and `%USERPROFILE%\.agents\skills\project-workflow` for the shared Codex-compatible copy. Older or agent-specific installs may also use `%USERPROFILE%\.codex\skills\project-workflow`. Confirm paths with `npx -y skills ls -g`, and never delete an entire skills directory.
