@@ -31,4 +31,3 @@ Before editing, read `AGENTS.md`, `CLAUDE.md`, `README.md`, `PROJECT-WORKING-GUI
 ## Verification and handoff
 
 Discover and run the project's relevant tests and guards. Run focused checks first and broader checks before completion. End real work with the full handoff format documented in `PROJECT-WORKING-GUIDE.md`; always include a `NEXT STEP` with the recommended action, rationale, alternatives, and blockers.
-

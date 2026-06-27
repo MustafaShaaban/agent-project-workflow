@@ -22,4 +22,3 @@ specify init . --integration codex
 ```
 
 Spec Kit is useful for durable, multi-step feature work. Do not force it into tiny throwaway experiments where the planning overhead has no practical value.
-

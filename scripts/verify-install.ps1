@@ -18,4 +18,3 @@ if (($Output | Out-String) -match '(?im)project-workflow') {
 
 Write-Error 'FAILURE: project-workflow was not found in the global skill list.'
 exit 1
-

@@ -56,4 +56,3 @@ See [installation](docs/install.md), [usage](docs/usage.md), and [project bootst
 ```powershell
 .\scripts\remove-global.ps1
 ```
-

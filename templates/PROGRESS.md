@@ -25,4 +25,3 @@
 ## Open blockers
 
 - None.
-

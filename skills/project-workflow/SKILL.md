@@ -170,4 +170,3 @@ RECOMMENDED NEXT STEP
 ## Stop conditions
 
 Stop and ask the owner when the real root is ambiguous, a checkout appears unintended, a destructive operation would be required, instructions conflict materially, or a missing decision would change project scope. Lack of a remote, optional tooling, or Spec Kit is not permission to invent configuration.
-

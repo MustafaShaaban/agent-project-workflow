@@ -51,4 +51,3 @@ Close a session:
 ```text
 Use project-workflow to verify the work, update PROGRESS.md and any durable decisions, then close the session with the full handoff and NEXT STEP block.
 ```
-

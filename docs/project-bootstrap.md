@@ -38,4 +38,3 @@ Existing files are skipped. Use `-Force` only after reviewing them and deciding 
 ## Spec Kit
 
 Bootstrap does not run Spec Kit. First inspect for `.specify`, existing specs, or spec commands. Ask the owner before installation or initialization, then run `specify integration list` to learn currently supported integration IDs.
-

@@ -10,4 +10,3 @@ Record durable owner, product, and architecture decisions. Do not record tempora
 - **Reason:** Why this option was selected.
 - **Impact:** What changes or constraints follow.
 - **Revisit trigger:** The condition that should cause reconsideration.
-
