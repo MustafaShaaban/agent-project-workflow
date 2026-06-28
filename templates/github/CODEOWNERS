@@ -1,0 +1,24 @@
+# CODEOWNERS
+# Controls who must review changes to specific files or directories.
+# Syntax: <pattern> <@user or @org/team>
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for all files not matched below
+# *   @org/team-leads
+
+# Workflow and agent instruction files — require owner review
+AGENTS.md                   @org/leads
+CLAUDE.md                   @org/leads
+.ai-workflow.yml            @org/leads
+.ai-skills.json             @org/leads
+PROJECT-WORKING-GUIDE.md    @org/leads
+
+# CI/CD configuration
+.github/                    @org/devops
+azure-pipelines.yml         @org/devops
+
+# Security-sensitive areas
+# config/secrets/           @org/security
+
+# Docs
+# docs/                     @org/docs-team

@@ -1,6 +1,7 @@
-# Handoff format
+# Handoff Format
 
-Use the full block after real project work:
+Use the full block after real project work. This is the v2 format, extended with
+platform, project type, profile, branching strategy, and skills status sections.
 
 ```text
 SUMMARY
@@ -14,9 +15,49 @@ WORKSPACE
 * Git status:
 * Files changed:
 
+DETECTED PLATFORM
+
+* Platform: GitHub | Azure DevOps | Generic Git
+* CI detected: GitHub Actions | Azure Pipelines | Other | None
+* Remote:
+
+DETECTED PROJECT TYPE
+
+* Type: wordpress | laravel | react | vue | nextjs | php | js/ts | dotnet | python | unknown
+* WordPress detected: Yes/No
+* WordPress indicators found:
+
+WORKFLOW PROFILE
+
+* Profile: minimal | standard | strict | enterprise
+* Mode: normal | observe-only | safe-bootstrap | strict-migration
+* Branching strategy: git-flow | github-flow | trunk-based | custom
+
+BRANCHING STRATEGY
+
+* Production branch:
+* Integration branch (Git Flow only):
+* Current branch:
+* Branch allowed: Yes/No/Warning
+
+SKILLS STATUS
+
+* project-workflow: Active
+* wp-guard required: Yes/No
+* wp-guard present: Yes/No/N/A
+* Other required skills: (list or None)
+* Missing skills: (list or None)
+* Install mode: ask | auto-approved-only | never
+
 MODE
 
 * Planning / Implementation / Docs / Design / Release / Debugging / Review / Bootstrap
+
+CHANGES MADE
+
+* Files created:
+* Files modified:
+* Files skipped (already existed):
 
 SPEC KIT STATUS
 
@@ -33,8 +74,9 @@ VERIFICATION
 * Guards/checks:
 * Results:
 
-BLOCKERS / DECISIONS NEEDED
+RISKS / BLOCKERS
 
+* Any risk from missing skills, branch violations, or unverified changes.
 * Any decision needed from the owner.
 * Any blocker that prevents safe progress.
 
