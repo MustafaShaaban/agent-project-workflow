@@ -1,15 +1,45 @@
 ---
 name: project-workflow
-description: Use when starting, continuing, planning, implementing, debugging, reviewing, documenting, designing, releasing, or bootstrapping work in a software repository and a safe repo-root, branch, Spec Kit, verification, durable-memory, and handoff routine is needed.
+description: Use when starting, continuing, planning, implementing, debugging, reviewing, documenting, designing, releasing, or bootstrapping work in a software repository and a safe repo-root, branch, platform detection, skills check, profile-aware verification, and structured handoff routine is needed.
 ---
 
 # Project Workflow
 
-Use one real repository root, make repository-owned instructions authoritative, preserve user work, and leave durable state plus a clear next step.
+Use one real repository root, read project config and rules first, enforce the
+active profile and branching strategy, check required skills, preserve user work,
+and leave durable state plus a clear structured handoff.
+
+---
+
+## 0. Load project config
+
+At the very start of every session, before any other step:
+
+**Read `.ai-workflow.yml`** from the project root if it exists. Extract:
+- `workflow.profile` (minimal / standard / strict / enterprise — default: standard)
+- `workflow.mode` (observe-only / safe-bootstrap / strict-migration / normal — default: normal)
+- `branching.strategy` (git-flow / github-flow / trunk-based / custom)
+- `branching.production_branch` (default: main)
+- `branching.integration_branch` (default: develop, Git Flow only)
+- `branching.allowed_work_branch_patterns`
+- `agent_safety.*` settings
+- `skills.install_mode` and `skills.conditional_required`
+- `wordpress.guard_required`
+
+**Read `.ai-skills.json`** if it exists. Extract required and conditional skills,
+install commands, and detection rules.
+
+If neither file exists, use safe defaults:
+- Profile: standard
+- Strategy: github-flow
+- Production branch: main
+- Install mode: ask
+
+---
 
 ## 1. Establish the workspace
 
-Before project work, run from the current directory:
+Run from the current directory:
 
 ```powershell
 git rev-parse --show-toplevel
@@ -19,18 +49,108 @@ git remote -v
 git worktree list
 ```
 
-If Git is not initialized, identify the intended project directory and ask before initialization unless the user explicitly requested repository bootstrap.
+Work only from the real Git root. Stop before editing if:
+- The current directory is not the Git root
+- A checkout appears unintended (wrong branch, detached HEAD)
+- An unexpected hidden worktree such as `.worktrees/` is detected
 
-Work only from the real repo root. Do not create or use hidden worktrees such as `.worktrees/` unless the owner explicitly approves one for this session. Stop before editing if the current directory, checkout, or worktree is wrong or suspicious.
+If Git is not initialized: identify the intended project directory and ask before
+initialization, unless the owner explicitly requested bootstrap.
 
-## 2. Protect branches and user work
+---
 
-- Do not implement on `main` or `master` unless creating the initial repository or the owner explicitly approves it.
-- For feature or fix work, create or continue a descriptive branch.
-- Never overwrite, reset, clean, discard, or conceal user changes.
-- Inspect existing files before modifying them and preserve useful content.
+## 2. Detect platform, project type, and profile
 
-## 3. Read project rules first
+After reading config and establishing the workspace, detect:
+
+**Platform:**
+- GitHub: remote URL contains `github.com` OR `.github/` directory exists
+- Azure DevOps: remote URL contains `dev.azure.com` / `visualstudio.com` OR `azure-pipelines.yml` / `.azure/` exists
+- Generic Git: all other cases
+
+**CI:**
+- GitHub Actions: `.github/workflows/` exists
+- Azure Pipelines: `azure-pipelines.yml` or `.azure/pipelines/` exists
+- Other: `Jenkinsfile`, `.circleci/`, `.travis.yml`, `bitbucket-pipelines.yml`
+
+**Project type (check these indicators in order):**
+- WordPress: `wp-config.php` OR `wp-content/` OR `wp-login.php` OR `wp-blog-header.php` OR `composer.json` with `johnpbloch/wordpress` or `roots/bedrock` OR `package.json` with `@wordpress/`
+- Laravel: `artisan` file exists
+- React: `package.json` with `"react"` dependency
+- Vue: `package.json` with `"vue"` dependency
+- Next.js: `package.json` with `"next"` dependency
+- Svelte: `package.json` with `"svelte"` dependency
+- JS/TS: any `package.json`
+- PHP: `composer.json` (non-Laravel)
+- .NET: `*.sln` or `*.csproj`
+- Python: `requirements.txt` or `pyproject.toml`
+- Unknown: no recognized indicators
+
+**Branching strategy (if not set in config):**
+- Git Flow: `develop` branch exists AND (`release/*` or `hotfix/*` branches exist)
+- Partial Git Flow: `develop` exists but no release/hotfix branches
+- GitHub Flow: feature branches from `main`, no `develop`
+- Trunk-based: all work on `main` or short-lived branches
+
+State detected values before proceeding.
+
+---
+
+## 3. Check skills status
+
+After detecting the project type:
+
+**Required skills:**
+- `project-workflow` is always required. It is already active if you are reading this.
+- Check `.ai-skills.json` for any additional required skills.
+
+**Conditional skills:**
+- If **WordPress is detected** AND `wordpress.guard_required` is true (default):
+  - Check if `wp-guard` skill is available
+  - If missing:
+    - `minimal`: warn, continue
+    - `standard`: warn and ask the owner before continuing
+    - `strict` / `enterprise`: **stop** until `wp-guard` is installed or explicitly bypassed by the owner
+  - Never install `wp-guard` (or any skill) silently
+  - Only suggest an install command if one is documented in `.ai-skills.json` with `install_approved: true`
+  - If the owner explicitly acknowledges the missing skill and asks to continue, note it as a risk in the handoff
+
+**Install mode:**
+- `ask`: detect missing skills and ask before installing (default)
+- `auto-approved-only`: install only skills with `install_approved: true` and a documented `install_command`
+- `never`: report missing skills and stop; never install
+
+---
+
+## 4. Protect branches and user work
+
+**Branch safety (enforced for all profiles except minimal):**
+- Do NOT implement on the production branch (`main`, `master`, or configured `production_branch`)
+- Do NOT implement on `develop` unless the owner explicitly approves small docs/chore changes
+- For feature or fix work, create or continue a descriptive branch
+
+**Git Flow branch rules (enforced when `strategy: git-flow`):**
+- `feature/*`, `fix/*`, `chore/*` → must branch from `develop`
+- `release/*` → branch from `develop`; merge into production AND back into `develop`
+- `hotfix/*` → branch from production; merge into production AND back into `develop`
+- If `develop` does not exist: stop and ask the owner whether to create it from production
+- If branch naming does not match allowed patterns:
+  - `standard`: warn
+  - `strict` / `enterprise`: block
+
+**All profiles:**
+- Never overwrite, reset, clean, discard, or conceal user changes
+- Inspect existing files before modifying them and preserve useful content
+- Never rewrite history
+- Never delete or rename branches automatically
+
+**Mode: observe-only** — make zero file modifications; audit and report only.
+**Mode: safe-bootstrap** — add missing workflow files only; skip existing files.
+**Mode: strict-migration** — propose migration plan; require owner approval for each step.
+
+---
+
+## 5. Read project rules first
 
 Before editing, read the files that exist in this order:
 
@@ -43,31 +163,62 @@ Before editing, read the files that exist in this order:
 7. `specs/constitution.md`
 8. Active files under `specs/`
 
-Resolve conflicts with this source-of-truth hierarchy:
-
-1. User's latest explicit instruction
-2. Repository instructions such as `AGENTS.md` and `CLAUDE.md`
+**Source-of-truth hierarchy:**
+1. Owner's latest explicit instruction
+2. Repository instructions (`AGENTS.md`, `CLAUDE.md`)
 3. `specs/constitution.md`
 4. Active spec files
 5. `PROGRESS.md` and `DECISIONS.md`
 6. `README.md` and other docs
 7. Implementation code
 
-## 4. Identify the mode
+---
 
-State the current mode before working: **Planning**, **Implementation**, **Docs**, **Design**, **Debugging**, **Review**, **Release**, or **Bootstrap**. If the task spans modes, name the primary mode and transition explicitly.
+## 6. Identify the mode and handle existing projects
 
-## 5. Handle missing workflow files safely
+State the current operating mode before working:
+**Planning, Implementation, Docs, Design, Debugging, Review, Release, or Bootstrap**
 
-If `AGENTS.md`, `PROJECT-WORKING-GUIDE.md`, `PROGRESS.md`, `DECISIONS.md`, or `specs/constitution.md` is missing, offer to create it. Create missing files only after approval unless the user explicitly requested initialization. Never overwrite an existing workflow file without first summarizing the proposed change.
+If the `.ai-workflow.yml` mode is `observe-only`:
+- Perform audit only
+- Run `scripts/audit-project-workflow.ps1` if available
+- Produce a full report and handoff with zero file modifications
 
-## 6. Use Spec Kit when adopted
+If the `.ai-workflow.yml` mode is `safe-bootstrap`:
+- Add only missing workflow files
+- Skip all files that already exist
+- Ask before overwriting any existing file
+
+If the `.ai-workflow.yml` mode is `strict-migration`:
+- Produce a detailed migration proposal
+- List each proposed change with rationale
+- Wait for explicit owner approval before taking any action
+- Never delete branches, rewrite history, or overwrite files without confirmation
+
+---
+
+## 7. Handle missing workflow files safely
+
+If `AGENTS.md`, `PROJECT-WORKING-GUIDE.md`, `PROGRESS.md`, `DECISIONS.md`, or
+`specs/constitution.md` is missing:
+- Offer to create it (do not create without approval unless bootstrap was requested)
+- Never overwrite an existing workflow file without first summarizing the proposed change
+
+**Profile-specific requirements:**
+- `minimal`: no required workflow files
+- `standard`: `PROGRESS.md` and `DECISIONS.md` required
+- `strict`: `PROGRESS.md`, `DECISIONS.md`, and `AGENTS.md` required
+- `enterprise`: all of the above plus platform-specific governance files (CODEOWNERS, etc.)
+
+---
+
+## 8. Use Spec Kit when adopted
 
 Detect Spec Kit by checking for `.specify/`, `specs/constitution.md`, spec commands, or existing spec workflow files.
 
-- If Spec Kit is missing, ask before installing or initializing it.
-- If `specify` is unavailable, suggest installation; do not install silently.
-- Run `specify integration list` before assuming current integration identifiers.
+- If Spec Kit is missing, ask before installing or initializing it
+- If `specify` is unavailable, suggest installation; do not install silently
+- Run `specify integration list` before assuming current integration identifiers
 - Depending on supported identifiers, recommend:
 
 ```powershell
@@ -75,20 +226,37 @@ specify init . --integration claude
 specify init . --integration codex
 ```
 
-When Spec Kit exists, use this sequence: **specify / clarify -> plan -> tasks -> implement -> verify -> handoff**. Do not force Spec Kit onto a tiny throwaway project where it adds no value.
+When Spec Kit exists, use: **specify / clarify → plan → tasks → implement → verify → handoff**
 
-## 7. Keep durable memory
+Do not force Spec Kit onto a tiny throwaway project where it adds no value.
 
-- Keep long-term project state in repository files, not only chat.
-- Update `PROGRESS.md` after meaningful progress.
-- Update `DECISIONS.md` after durable owner or architecture decisions.
-- Do not promote temporary thoughts, guesses, or implementation notes into permanent decisions.
+---
 
-## 8. Test and guard changes
+## 9. Keep durable memory
 
-Discover commands from `README` files, package manifests, Composer files, Makefiles, CI configuration, and project docs. Run the smallest relevant test first, then broader checks before declaring completion. If a check cannot run, explain why and state the resulting risk.
+- Keep long-term project state in repository files, not only chat
+- Update `PROGRESS.md` after meaningful progress
+- Update `DECISIONS.md` after durable owner or architecture decisions
+- Do not promote temporary thoughts, guesses, or implementation notes into permanent decisions
 
-## 9. Close the work
+---
+
+## 10. Test and guard changes
+
+Discover commands from `README` files, package manifests, Composer files, Makefiles,
+CI configuration, and project docs.
+
+When guard scripts are present in the project:
+- Run `scripts/guard-before-edit.ps1` before editing
+- Run `scripts/guard-git-flow.ps1` to validate branch state
+- Run `scripts/guard-before-merge.ps1` before merging or releasing
+
+Run the smallest relevant test first, then broader checks before declaring completion.
+If a check cannot run, explain why and state the resulting risk.
+
+---
+
+## 11. Close the work
 
 For real project work, end with this exact structure:
 
@@ -104,9 +272,49 @@ WORKSPACE
 * Git status:
 * Files changed:
 
+DETECTED PLATFORM
+
+* Platform: GitHub | Azure DevOps | Generic Git
+* CI detected: GitHub Actions | Azure Pipelines | Other | None
+* Remote:
+
+DETECTED PROJECT TYPE
+
+* Type: wordpress | laravel | react | vue | nextjs | php | js/ts | dotnet | python | unknown
+* WordPress detected: Yes/No
+* WordPress indicators found:
+
+WORKFLOW PROFILE
+
+* Profile: minimal | standard | strict | enterprise
+* Mode: normal | observe-only | safe-bootstrap | strict-migration
+* Branching strategy: git-flow | github-flow | trunk-based | custom
+
+BRANCHING STRATEGY
+
+* Production branch:
+* Integration branch (Git Flow only):
+* Current branch:
+* Branch allowed: Yes/No/Warning
+
+SKILLS STATUS
+
+* project-workflow: Active
+* wp-guard required: Yes/No
+* wp-guard present: Yes/No/N/A
+* Other required skills: (list or None)
+* Missing skills: (list or None)
+* Install mode: ask | auto-approved-only | never
+
 MODE
 
 * Planning / Implementation / Docs / Design / Release / Debugging / Review / Bootstrap
+
+CHANGES MADE
+
+* Files created:
+* Files modified:
+* Files skipped (already existed):
 
 SPEC KIT STATUS
 
@@ -123,8 +331,9 @@ VERIFICATION
 * Guards/checks:
 * Results:
 
-BLOCKERS / DECISIONS NEEDED
+RISKS / BLOCKERS
 
+* Any risk from missing skills, branch violations, or unverified changes.
 * Any decision needed from the owner.
 * Any blocker that prevents safe progress.
 
@@ -167,6 +376,17 @@ RECOMMENDED NEXT STEP
 * Decision needed:
 ```
 
+---
+
 ## Stop conditions
 
-Stop and ask the owner when the real root is ambiguous, a checkout appears unintended, a destructive operation would be required, instructions conflict materially, or a missing decision would change project scope. Lack of a remote, optional tooling, or Spec Kit is not permission to invent configuration.
+Stop and ask the owner when:
+- The real root is ambiguous or the checkout appears unintended
+- A destructive operation would be required (reset, delete, force push)
+- `develop` is missing and Git Flow is configured
+- A required skill (wp-guard for WordPress in strict/enterprise) is missing and not bypassed
+- Instructions conflict materially between config, project files, and owner request
+- A missing decision would change project scope or branching strategy
+- `observe-only` mode is active and someone is asking for file edits
+
+Lack of a remote, optional tooling, optional CI, or Spec Kit is not a stop condition.
