@@ -185,6 +185,10 @@ See [docs/wordpress.md](docs/wordpress.md).
 | [docs/github.md](docs/github.md) | GitHub platform guidance |
 | [docs/azure-devops.md](docs/azure-devops.md) | Azure DevOps platform guidance |
 | [docs/generic-git.md](docs/generic-git.md) | Generic Git guidance |
+| [docs/definition-of-done.md](docs/definition-of-done.md) | Definition of done for AI-assisted tasks |
+| [docs/compatibility.md](docs/compatibility.md) | Supported environments and platforms |
+| [docs/upgrade.md](docs/upgrade.md) | Upgrading from older versions |
+| [docs/testing.md](docs/testing.md) | Running tests and manual verification |
 | [docs/spec-kit.md](docs/spec-kit.md) | Spec Kit integration |
 | [docs/handoff-format.md](docs/handoff-format.md) | Handoff format reference |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Common issues and fixes |

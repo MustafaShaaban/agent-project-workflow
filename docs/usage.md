@@ -106,6 +106,18 @@ Detect whether wp-guard is installed and report before proceeding.
 
 ---
 
+## Definition of done
+
+Before reporting a task complete, verify against [docs/definition-of-done.md](definition-of-done.md).
+Quick prompt:
+
+```text
+Use project-workflow's definition of done to verify this task is complete.
+Check: root, branch, rules read, profile, skills, guards, tests, scoped changes, no secrets, PROGRESS.md updated, handoff produced.
+```
+
+---
+
 ## Bootstrap scripts
 
 ```powershell

@@ -10,32 +10,56 @@
 .PARAMETER TargetPath
     Path to the project root to audit. Defaults to the current directory.
 
+.PARAMETER OutputFormat
+    Output format: Text (default, human-readable) or Json (machine-readable for CI use).
+
 .EXAMPLE
     .\audit-project-workflow.ps1
     .\audit-project-workflow.ps1 -TargetPath C:\path\to\project
+    .\audit-project-workflow.ps1 -TargetPath C:\path\to\project -OutputFormat Json
 #>
 [CmdletBinding()]
 param(
-    [string]$TargetPath = (Get-Location).Path
+    [string]$TargetPath = (Get-Location).Path,
+    [ValidateSet('Text', 'Json')]
+    [string]$OutputFormat = 'Text'
 )
+$jsonMode = $OutputFormat -eq 'Json'
 
 $ErrorActionPreference = 'Stop'
 $target = [System.IO.Path]::GetFullPath($TargetPath)
 
-function Write-Section { param([string]$Title) Write-Host "`n=== $Title ===" -ForegroundColor Cyan }
-function Write-Ok    { param([string]$Msg) Write-Host "  [OK]      $Msg" -ForegroundColor Green }
-function Write-Warn  { param([string]$Msg) Write-Host "  [WARN]    $Msg" -ForegroundColor Yellow }
-function Write-Miss  { param([string]$Msg) Write-Host "  [MISSING] $Msg" -ForegroundColor DarkYellow }
-function Write-Info  { param([string]$Msg) Write-Host "  [INFO]    $Msg" -ForegroundColor Gray }
-function Write-Risk  { param([string]$Msg) Write-Host "  [RISK]    $Msg" -ForegroundColor Red }
+# Collected audit data for JSON output
+$auditData = @{
+    status               = 'pass'
+    project_root         = $target
+    platform             = 'unknown'
+    project_type         = 'unknown'
+    branch               = ''
+    profile              = 'standard'
+    branching_strategy   = 'unknown'
+    skills_required      = @('project-workflow')
+    skills_missing       = @()
+    risks                = @()
+    recommended_next_step = ''
+}
+
+function Write-Section { param([string]$Title) if (-not $jsonMode) { Write-Host "`n=== $Title ===" -ForegroundColor Cyan } }
+function Write-Ok    { param([string]$Msg) if (-not $jsonMode) { Write-Host "  [OK]      $Msg" -ForegroundColor Green } }
+function Write-Warn  { param([string]$Msg) if (-not $jsonMode) { Write-Host "  [WARN]    $Msg" -ForegroundColor Yellow } }
+function Write-Miss  { param([string]$Msg) if (-not $jsonMode) { Write-Host "  [MISSING] $Msg" -ForegroundColor DarkYellow } }
+function Write-Info  { param([string]$Msg) if (-not $jsonMode) { Write-Host "  [INFO]    $Msg" -ForegroundColor Gray } }
+function Write-Risk  { param([string]$Msg) if (-not $jsonMode) { Write-Host "  [RISK]    $Msg" -ForegroundColor Red } }
 
 $risks = [System.Collections.Generic.List[string]]::new()
 $nextStep = $null
 
-Write-Host "`n=====================================" -ForegroundColor Cyan
-Write-Host " AI Workflow Audit" -ForegroundColor Cyan
-Write-Host " Target: $target" -ForegroundColor Cyan
-Write-Host "=====================================" -ForegroundColor Cyan
+if (-not $jsonMode) {
+    Write-Host "`n=====================================" -ForegroundColor Cyan
+    Write-Host " AI Workflow Audit" -ForegroundColor Cyan
+    Write-Host " Target: $target" -ForegroundColor Cyan
+    Write-Host "=====================================" -ForegroundColor Cyan
+}
 
 # ─── Git ───────────────────────────────────────────────────────────────────
 Write-Section "GIT"
@@ -302,6 +326,22 @@ if (Test-Path (Join-Path $target '.ai-skills.json')) {
     Write-Info "No .ai-skills.json - skill requirements not formally documented"
 }
 
+# ─── Collect JSON data at detection completion ─────────────────────────────
+$auditData.platform            = $platform
+$auditData.project_type        = $projectType
+$auditData.branch              = if ($currentBranch) { $currentBranch } else { '' }
+$auditData.branching_strategy  = $branchStrategy
+$auditData.risks               = $risks.ToArray()
+if ($isWordPress) { $auditData.skills_missing = @('wp-guard') }
+
+$resolvedNextStep = if ($nextStep) { $nextStep } `
+    elseif (-not (Test-Path (Join-Path $target 'AGENTS.md'))) { 'Run bootstrap-project.ps1 to add missing workflow files.' } `
+    elseif (-not (Test-Path (Join-Path $target '.ai-workflow.yml'))) { 'Copy templates/.ai-workflow.yml to the project root and adjust for this project.' } `
+    elseif ($isWordPress) { "Install the 'wp-guard' skill before continuing work on this WordPress project." } `
+    else { 'Audit complete. Project appears ready for AI workflow use.' }
+$auditData.recommended_next_step = $resolvedNextStep
+$auditData.status = if ($risks.Count -gt 0) { 'warn' } else { 'pass' }
+
 # ─── Risks summary ─────────────────────────────────────────────────────────
 Write-Section "RISKS"
 
@@ -314,16 +354,16 @@ if ($risks.Count -eq 0) {
 # ─── Recommended next step ─────────────────────────────────────────────────
 Write-Section "RECOMMENDED NEXT STEP"
 
-if ($nextStep) {
-    Write-Host "  $nextStep" -ForegroundColor Yellow
-} elseif (-not (Test-Path (Join-Path $target 'AGENTS.md'))) {
-    Write-Host "  Run bootstrap-project.ps1 to add missing workflow files." -ForegroundColor Yellow
-} elseif (-not (Test-Path (Join-Path $target '.ai-workflow.yml'))) {
-    Write-Host "  Copy templates/.ai-workflow.yml to the project root and adjust for this project." -ForegroundColor Yellow
-} elseif ($isWordPress) {
-    Write-Host "  Install the wp-guard skill before continuing work on this WordPress project." -ForegroundColor Yellow
-} else {
-    Write-Host "  Audit complete. Project appears ready for AI workflow use." -ForegroundColor Green
+if (-not $jsonMode) {
+    if ($resolvedNextStep -eq 'Audit complete. Project appears ready for AI workflow use.') {
+        Write-Host "  $resolvedNextStep" -ForegroundColor Green
+    } else {
+        Write-Host "  $resolvedNextStep" -ForegroundColor Yellow
+    }
+    Write-Host ""
 }
 
-Write-Host ""
+# ─── JSON output ──────────────────────────────────────────────────────────
+if ($jsonMode) {
+    $auditData | ConvertTo-Json -Depth 5
+}

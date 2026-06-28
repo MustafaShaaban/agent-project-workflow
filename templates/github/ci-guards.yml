@@ -1,0 +1,70 @@
+name: AI Workflow Guards
+
+# Optional: Run audit and guard scripts in CI on pull requests.
+# Copy this file to .github/workflows/ai-guards.yml in your project.
+# Requires: Windows runner (scripts are PowerShell). Adjust pool if needed.
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  audit:
+    name: Project Audit
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run project audit
+        id: audit
+        shell: pwsh
+        run: |
+          # Download or reference the workflow scripts from your repo
+          # Assumes scripts/ is present in the repository being audited
+          $result = .\scripts\audit-project-workflow.ps1 -OutputFormat Json | ConvertFrom-Json
+          Write-Host "Platform:   $($result.platform)"
+          Write-Host "Type:       $($result.project_type)"
+          Write-Host "Branch:     $($result.branch)"
+          Write-Host "Status:     $($result.status)"
+          if ($result.risks.Count -gt 0) {
+            Write-Host "Risks:"
+            $result.risks | ForEach-Object { Write-Host "  - $_" }
+          }
+          # Fail if status is not pass or warn
+          if ($result.status -eq 'fail') { exit 1 }
+
+  branch-guard:
+    name: Branch Guard
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate branch rules
+        shell: pwsh
+        run: |
+          .\scripts\guard-git-flow.ps1
+          # Exit code 0 = pass, 1 = blocked
+
+  pre-merge-guard:
+    name: Pre-Merge Guard
+    runs-on: windows-latest
+    # Run only when targeting production/integration branches
+    if: |
+      github.base_ref == 'main' ||
+      github.base_ref == 'master' ||
+      github.base_ref == 'develop'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run pre-merge guard
+        shell: pwsh
+        run: |
+          .\scripts\guard-before-merge.ps1
+          # Warnings produce exit 0; failures produce exit 1
+
+# How to interpret results:
+# - audit: pass = project is ready; warn = risks found but not blocking; fail = critical issues
+# - branch-guard: PASS = branch rules are satisfied; BLOCKED = fix before merging
+# - pre-merge-guard: CLEAR = safe to merge; PROCEED WITH CAUTION = review warnings; BLOCKED = do not merge
+#
+# Treat BLOCKED as a CI failure. Treat PROCEED WITH CAUTION as a warning (review, not block).

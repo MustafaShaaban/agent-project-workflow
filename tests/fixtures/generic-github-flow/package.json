@@ -1,0 +1,8 @@
+{
+  "name": "fixture-generic-github-flow",
+  "version": "0.0.1",
+  "description": "Test fixture for generic GitHub Flow project detection",
+  "dependencies": {
+    "react": "^18.0.0"
+  }
+}

@@ -1,0 +1,15 @@
+project:
+  name: fixture-git-flow
+  type: laravel
+
+platform:
+  provider: azure-devops
+
+workflow:
+  profile: strict
+  mode: normal
+
+branching:
+  strategy: git-flow
+  production_branch: main
+  integration_branch: develop
