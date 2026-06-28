@@ -241,7 +241,49 @@ Do not force Spec Kit onto a tiny throwaway project where it adds no value.
 
 ---
 
-## 10. Test and guard changes
+## 10. Security and sensitive-file guardrails
+
+**Stop and ask the owner before editing any of these file types:**
+
+- `.env`, `.env.*`, `.env.local`, `.env.production`, `.env.staging`
+- Files containing "secret", "credential", "password", "private_key" in the filename
+- Private keys (`*.pem`, `*.key`, `*.p12`, `*.pfx`)
+- Deployment credentials or production configuration
+- CI/CD secrets or variable files (e.g. `secrets.yml`, `.vault_pass`)
+- Database dumps (`*.sql`, `*.db`, `*.sqlite`)
+- Backup files (`*.bak`, `*.backup`)
+- Files outside the declared project scope
+
+**Secrets in output — always:**
+- Never print secret values in handoffs, logs, prompts, or documentation
+- If a sensitive file or value is discovered, report the file path and nature only — never the value
+- Never copy secret values into examples, templates, or comments
+
+---
+
+## 11. Generated and vendor file protection
+
+**Warn before editing, and require explicit owner approval for:**
+
+- `vendor/` — PHP/Composer dependencies
+- `node_modules/` — JavaScript/npm dependencies
+- `dist/`, `build/`, `out/` — compiled/bundled output
+- `coverage/` — test coverage reports
+- `.next/`, `.nuxt/`, `.svelte-kit/` — framework build caches
+- `storage/cache/`, `storage/framework/` — Laravel framework caches
+- `public/uploads/`, `wp-content/uploads/` — user-uploaded files
+- `wp-content/cache/` — WordPress page/object cache
+
+These directories are generated artifacts or external dependencies.
+Changes to them are overwritten by builds or package installs.
+Editing them directly is almost never the right action.
+
+**Exception:** If the owner explicitly says "edit `dist/x.js` directly," proceed
+but note the risk in the handoff (changes will be overwritten on next build).
+
+---
+
+## 12. Test and guard changes
 
 Discover commands from `README` files, package manifests, Composer files, Makefiles,
 CI configuration, and project docs.
@@ -254,9 +296,12 @@ When guard scripts are present in the project:
 Run the smallest relevant test first, then broader checks before declaring completion.
 If a check cannot run, explain why and state the resulting risk.
 
+See [docs/definition-of-done.md](../../docs/definition-of-done.md) for the full checklist
+of what must be true before a task is considered complete.
+
 ---
 
-## 11. Close the work
+## 13. Close the work
 
 For real project work, end with this exact structure:
 

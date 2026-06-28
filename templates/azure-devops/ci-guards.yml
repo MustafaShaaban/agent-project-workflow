@@ -1,0 +1,79 @@
+# AI Workflow Guards — Azure Pipelines
+# Optional: Run audit and guard scripts in CI on pull requests.
+# Copy this file to azure-pipelines-guards.yml in your project.
+# Requires: Windows agent (scripts are PowerShell). Adjust pool if needed.
+
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+      - master
+      - develop
+
+pool:
+  vmImage: windows-latest
+
+stages:
+
+  - stage: WorkflowGuards
+    displayName: AI Workflow Guards
+    jobs:
+
+      - job: ProjectAudit
+        displayName: Project Audit
+        steps:
+          - checkout: self
+          - task: PowerShell@2
+            displayName: Run project audit (JSON)
+            inputs:
+              targetType: inline
+              script: |
+                $result = .\scripts\audit-project-workflow.ps1 -OutputFormat Json | ConvertFrom-Json
+                Write-Host "Platform:   $($result.platform)"
+                Write-Host "Type:       $($result.project_type)"
+                Write-Host "Branch:     $($result.branch)"
+                Write-Host "Status:     $($result.status)"
+                if ($result.risks.Count -gt 0) {
+                  $result.risks | ForEach-Object { Write-Host "##[warning]Risk: $_" }
+                }
+                # Set pipeline variable for downstream jobs
+                Write-Host "##vso[task.setvariable variable=AuditStatus;isOutput=true]$($result.status)"
+                if ($result.status -eq 'fail') { exit 1 }
+              pwsh: true
+
+      - job: BranchGuard
+        displayName: Branch Guard
+        steps:
+          - checkout: self
+          - task: PowerShell@2
+            displayName: Validate branch rules
+            inputs:
+              targetType: inline
+              script: .\scripts\guard-git-flow.ps1
+              pwsh: true
+              # Exit 0 = PASS, exit 1 = BLOCKED
+
+      - job: PreMergeGuard
+        displayName: Pre-Merge Guard
+        condition: |
+          or(
+            eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/main'),
+            eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/master'),
+            eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/develop')
+          )
+        steps:
+          - checkout: self
+          - task: PowerShell@2
+            displayName: Pre-merge safety check
+            inputs:
+              targetType: inline
+              script: .\scripts\guard-before-merge.ps1
+              pwsh: true
+              # Warnings = exit 0 (review required); Failures = exit 1 (block)
+
+# Notes:
+# - "##[warning]" lines appear as warnings in the Azure DevOps pipeline summary
+# - Set 'continueOnError: true' on non-blocking jobs to allow warnings without failing the pipeline
+# - Adjust pool to match your self-hosted agent if Windows-hosted agents are unavailable

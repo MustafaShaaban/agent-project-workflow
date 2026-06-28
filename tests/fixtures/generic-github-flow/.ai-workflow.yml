@@ -1,0 +1,14 @@
+project:
+  name: fixture-generic-github-flow
+  type: react
+
+platform:
+  provider: github
+
+workflow:
+  profile: standard
+  mode: normal
+
+branching:
+  strategy: github-flow
+  production_branch: main

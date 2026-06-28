@@ -1,0 +1,23 @@
+project:
+  name: fixture-wordpress
+  type: wordpress
+
+platform:
+  provider: github
+
+workflow:
+  profile: standard
+  mode: normal
+
+branching:
+  strategy: github-flow
+  production_branch: main
+
+wordpress:
+  guard_required: true
+
+skills:
+  install_mode: ask
+  conditional_required:
+    - name: wp-guard
+      condition: wordpress_detected
