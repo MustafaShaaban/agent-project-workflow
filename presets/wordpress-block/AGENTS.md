@@ -1,4 +1,4 @@
-﻿# Agent Instructions
+# Agent Instructions
 
 <!-- agent-project-workflow:start -->
 For every project request, even if the user does not mention project-workflow, automatically follow the startup sequence in PROJECT-WORKING-GUIDE.md before planning, editing, running commands, committing, pushing, or merging.

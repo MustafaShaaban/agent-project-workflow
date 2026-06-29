@@ -20,6 +20,12 @@ Or use:
 .\scripts\install-global.ps1
 ```
 
+To install directly from GitHub without relying on the current directory:
+
+```powershell
+npx -y skills add MustafaShaaban/agent-project-workflow --skill project-workflow --global --agent claude-code --agent codex --copy
+```
+
 If Windows PowerShell blocks unsigned local scripts, run:
 
 ```powershell

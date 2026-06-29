@@ -1,4 +1,4 @@
-﻿workflow:
+workflow:
   version: "0.3.0"
   profile: standard
   archetype: wordpress-woocommerce

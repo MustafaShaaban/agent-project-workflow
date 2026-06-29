@@ -1,4 +1,4 @@
-﻿# Project Working Guide
+# Project Working Guide
 
 <!-- agent-project-workflow:start -->
 Resolve the real root; inspect status, branch, remotes, and worktrees; detect platform, CI, and archetype; read workflow, lock, instruction, progress, decision, constitution, and active-spec files; state mode and recommended next step.

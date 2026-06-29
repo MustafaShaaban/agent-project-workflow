@@ -19,12 +19,23 @@ All notable changes to this project are documented here.
 - Recommendation-first no-write handling when `-Type auto` cannot detect a project type.
 - Safe execution of approved-only `npx skills add` commands, with unapproved commands kept manual.
 - CLI, presets, bundles, WordPress preset, question engine, automatic activation, CI enforcement, and skills policy documentation.
+- Repository-owned `.gitattributes` and GitHub Actions self-verification workflow.
+- Regression tests for immutable marker constants, exact generated marker pairs, incomplete markers, owner content on both sides of managed blocks, and recursive anti-collapse checks.
+
+### Fixed
+
+- Managed markers are immutable non-empty constants and malformed or duplicate marker pairs are no longer treated as managed content.
+- Upgrade now replaces only the exact managed block without appending a newline to owner content outside it.
+- Generated project skill policy now uses the real GitHub repository instead of a target-relative `.` install source.
+- All five companion guards now have verified install commands while remaining unapproved/manual by default.
+- Doctor now uses the explicit lock archetype/profile when filesystem detection is unknown, avoiding false mismatch warnings and skipped WordPress guard checks.
 
 ### Verification
 
-- `scripts/test-workflow.ps1`: 92 passed, 4 expected warnings for unavailable PowerShell YAML parser modules, 0 failures.
+- `scripts/test-workflow.ps1`: 100 passed, 4 expected warnings for unavailable PowerShell YAML parser modules, 0 failed.
 - `git diff --check`: passed.
-- PR #5 and PR #6 merged into `master`.
+- Manual WordPress/Spec Kit smoke: dry-run wrote nothing; apply succeeded; doctor returned `ready` with score 100, 0 warnings, and 0 blockers.
+- PRs #5 through #9 merged into `master`; this hardening pass is committed directly by explicit owner request.
 
 ## 0.2.0 - 2026-06-28
 

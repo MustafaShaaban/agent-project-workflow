@@ -26,6 +26,18 @@ function Set-GeneratedFile {
     Set-Content -LiteralPath $Path -Value $Content -Encoding UTF8
 }
 
+function Get-InstallCommand {
+    param([string]$SkillName)
+
+    if ($SkillName -eq 'project-workflow') {
+        return 'npx -y skills add MustafaShaaban/agent-project-workflow --skill project-workflow --global --agent claude-code --agent codex --copy'
+    }
+    if ($SkillName -in @('clean-code-guard', 'test-guard', 'docs-guard', 'wp-guard', 'woo-guard')) {
+        return "npx -y skills add amElnagdy/guard-skills --skill $SkillName --global --agent claude-code --agent codex --copy"
+    }
+    return $null
+}
+
 foreach ($preset in $presets) {
     $root = Join-Path $presetRoot $preset.name
     if (-not (Test-Path $root)) { New-Item -ItemType Directory -Path $root -Force | Out-Null }
@@ -41,7 +53,7 @@ foreach ($preset in $presets) {
                 [ordered]@{
                     name = $_
                     install_approved = ($_ -eq 'project-workflow')
-                    install_command = if ($_ -eq 'project-workflow') { 'npx -y skills add . --skill project-workflow --global --agent claude-code --agent codex --copy' } else { $null }
+                    install_command = Get-InstallCommand -SkillName $_
                 }
             })
             optional = if ($preset.wordpress) { @('wp-plugin-development', 'wp-block-development', 'wp-performance', 'wp-phpstan', 'wp-playground') } else { @() }

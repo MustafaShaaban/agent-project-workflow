@@ -41,6 +41,12 @@ Or:
 npx -y skills add . --skill project-workflow --global --agent claude-code --agent codex --copy
 ```
 
+Without a local clone:
+
+```powershell
+npx -y skills add MustafaShaaban/agent-project-workflow --skill project-workflow --global --agent claude-code --agent codex --copy
+```
+
 ## Quick usage
 
 Initialize an existing WordPress project safely:
@@ -68,8 +74,13 @@ Audit and validate an existing project:
 Upgrade managed workflow blocks:
 
 ```powershell
+.\scripts\project-workflow.ps1 upgrade -DryRun
 .\scripts\project-workflow.ps1 upgrade -Apply
 ```
+
+Upgrade changes only the content between the exact managed markers. Text before
+or after the block remains owner-managed. Files without one valid marker pair
+are never overwritten; the CLI writes `<name>.suggested.md` for review.
 
 Install only approved skills:
 
@@ -157,6 +168,12 @@ WordPress-specific safety rules (core protection, plugin/theme safety, etc.).
 
 WordPress presets include site, plugin, theme, block, Bedrock, and WooCommerce-oriented modes. WooCommerce work requires `woo-guard` and treats checkout, orders, payments, shipping, tax, customer data, and PII as high-risk work that requires Spec Kit before implementation.
 
+The five companion guards are real installable skills from
+`amElnagdy/guard-skills`: `clean-code-guard`, `test-guard`, `docs-guard`,
+`wp-guard`, and `woo-guard`. Generated policy includes their install commands,
+but leaves `install_approved: false`; `install-skills -ApprovedOnly` will not
+install them until the project owner explicitly approves that source.
+
 See [docs/wordpress.md](docs/wordpress.md).
 
 ## Guard scripts
@@ -226,3 +243,16 @@ See [docs/wordpress.md](docs/wordpress.md).
 ```powershell
 .\scripts\remove-global.ps1
 ```
+
+## Repository verification
+
+The repository validates PowerShell syntax, JSON/YAML structure, managed-block
+safety, presets, documentation, anti-collapse line counts, and CLI behavior:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-workflow.ps1
+git diff --check
+```
+
+`.github/workflows/verify.yml` runs the same checks for pushes and pull requests
+targeting `master`.

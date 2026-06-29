@@ -34,9 +34,13 @@ $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib\WorkflowDetection.ps1')
 
-$ManagedStart = '<!-- agent-project-workflow:start -->'
-$ManagedEnd = '<!-- agent-project-workflow:end -->'
+Set-Variable -Name ManagedStart -Value '<!-- agent-project-workflow:start -->' -Option Constant -Scope Script
+Set-Variable -Name ManagedEnd -Value '<!-- agent-project-workflow:end -->' -Option Constant -Scope Script
 $WorkflowVersion = '0.3.0'
+
+if ([string]::IsNullOrWhiteSpace($ManagedStart) -or [string]::IsNullOrWhiteSpace($ManagedEnd)) {
+    throw 'Managed block markers must be non-empty constants.'
+}
 
 function Write-InfoLine { param([string]$Message) Write-Host $Message }
 
@@ -145,6 +149,36 @@ $ProjectNotes
 "@
 }
 
+function Get-SkillInstallCommand {
+    param([string]$SkillName)
+
+    if ($SkillName -eq 'project-workflow') {
+        return 'npx -y skills add MustafaShaaban/agent-project-workflow --skill project-workflow --global --agent claude-code --agent codex --copy'
+    }
+    if ($SkillName -in @('clean-code-guard', 'test-guard', 'docs-guard', 'wp-guard', 'woo-guard')) {
+        return "npx -y skills add amElnagdy/guard-skills --skill $SkillName --global --agent claude-code --agent codex --copy"
+    }
+    return $null
+}
+
+function Test-ValidManagedBlock {
+    param([string]$Content)
+
+    if ([string]::IsNullOrEmpty($Content)) { return $false }
+    $startMatches = [regex]::Matches($Content, [regex]::Escape($ManagedStart))
+    $endMatches = [regex]::Matches($Content, [regex]::Escape($ManagedEnd))
+    return ($startMatches.Count -eq 1) -and
+        ($endMatches.Count -eq 1) -and
+        ($startMatches[0].Index -lt $endMatches[0].Index)
+}
+
+function Write-WorkflowText {
+    param([string]$Path, [string]$Content)
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
+}
+
 function Set-WorkflowFile {
     param(
         [string]$Root,
@@ -165,25 +199,28 @@ function Set-WorkflowFile {
     if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
 
     if (-not (Test-Path -LiteralPath $path)) {
-        Set-Content -LiteralPath $path -Value $Content -Encoding UTF8
+        Write-WorkflowText -Path $path -Content $Content
         $Generated.Add($RelativePath)
         Write-InfoLine "CREATED: $RelativePath"
         return
     }
 
     $existing = Get-Content -LiteralPath $path -Raw
-    if ($existing -match [regex]::Escape($ManagedStart) -and $existing -match [regex]::Escape($ManagedEnd)) {
-        $pattern = "(?s)$([regex]::Escape($ManagedStart)).*?$([regex]::Escape($ManagedEnd))"
-        $replacement = ($Content -replace "(?s)^.*?$([regex]::Escape($ManagedStart))", $ManagedStart) -replace "(?s)$([regex]::Escape($ManagedEnd)).*$", $ManagedEnd
-        $updated = [regex]::Replace($existing, $pattern, $replacement)
-        Set-Content -LiteralPath $path -Value $updated -Encoding UTF8
+    if ((Test-ValidManagedBlock -Content $existing) -and (Test-ValidManagedBlock -Content $Content)) {
+        $existingStart = $existing.IndexOf($ManagedStart, [System.StringComparison]::Ordinal)
+        $existingEnd = $existing.IndexOf($ManagedEnd, [System.StringComparison]::Ordinal) + $ManagedEnd.Length
+        $replacementStart = $Content.IndexOf($ManagedStart, [System.StringComparison]::Ordinal)
+        $replacementEnd = $Content.IndexOf($ManagedEnd, [System.StringComparison]::Ordinal) + $ManagedEnd.Length
+        $replacement = $Content.Substring($replacementStart, $replacementEnd - $replacementStart)
+        $updated = $existing.Substring(0, $existingStart) + $replacement + $existing.Substring($existingEnd)
+        Write-WorkflowText -Path $path -Content $updated
         $Generated.Add($RelativePath)
         Write-InfoLine "UPDATED MANAGED BLOCK: $RelativePath"
         return
     }
 
     $suggestedPath = "$path.suggested.md"
-    Set-Content -LiteralPath $suggestedPath -Value $Content -Encoding UTF8
+    Write-WorkflowText -Path $suggestedPath -Content $Content
     $Suggested.Add("$RelativePath.suggested.md")
     $Skipped.Add($RelativePath)
     Write-InfoLine "SUGGESTED: $RelativePath.suggested.md (existing file has no managed block)"
@@ -443,7 +480,7 @@ function Get-SkillsJson {
         $required += [ordered]@{
             name = $skill
             install_approved = ($skill -eq 'project-workflow')
-            install_command = if ($skill -eq 'project-workflow') { 'npx -y skills add . --skill project-workflow --global --agent claude-code --agent codex --copy' } else { $null }
+            install_command = Get-SkillInstallCommand -SkillName $skill
             reason = "Required by $Profile profile for $Archetype projects."
         }
     }
@@ -582,21 +619,43 @@ function Invoke-Audit {
 
 function Invoke-Doctor {
     $root = Resolve-TargetRoot -Path $TargetPath
-    $archetype = Get-WfArchetype -ProjectRoot $root
+    $detectedArchetype = Get-WfArchetype -ProjectRoot $root
+    $archetype = $detectedArchetype
+    $profile = 'standard'
     $score = 100
     $passing = [System.Collections.Generic.List[string]]::new()
     $warnings = [System.Collections.Generic.List[string]]::new()
     $blocking = [System.Collections.Generic.List[string]]::new()
+
+    $lockPath = Join-Path $root '.agent-workflow.lock.json'
+    if (Test-Path $lockPath) {
+        try {
+            $lock = Get-Content $lockPath -Raw | ConvertFrom-Json
+            if ($lock.profile) { $profile = $lock.profile }
+            if (($detectedArchetype -eq 'unknown') -and $lock.archetype -and ($lock.archetype -ne 'unknown')) {
+                $archetype = $lock.archetype
+                $passing.Add("lock file supplies explicit archetype '$archetype'")
+            } elseif ($lock.archetype -eq $detectedArchetype) {
+                $passing.Add('lock file archetype matches detection')
+            } else {
+                $warnings.Add("lock archetype '$($lock.archetype)' differs from detected '$detectedArchetype'")
+                $score -= 4
+            }
+        } catch {
+            $blocking.Add('.agent-workflow.lock.json is not parseable')
+            $score -= 10
+        }
+    }
 
     foreach ($file in @('AGENTS.md','CLAUDE.md','PROJECT-WORKING-GUIDE.md','PROGRESS.md','DECISIONS.md','specs\constitution.md','.ai-workflow.yml','.ai-skills.json','.agent-workflow.lock.json')) {
         if (Test-Path (Join-Path $root $file)) { $passing.Add("$file exists") } else { $blocking.Add("$file missing"); $score -= 8 }
     }
     foreach ($file in @('AGENTS.md','CLAUDE.md','PROJECT-WORKING-GUIDE.md','specs\constitution.md')) {
         $path = Join-Path $root $file
-        if ((Test-Path $path) -and ((Get-Content $path -Raw) -match [regex]::Escape($ManagedStart))) {
+        if ((Test-Path $path) -and (Test-ValidManagedBlock -Content (Get-Content $path -Raw))) {
             $passing.Add("$file has managed block")
         } else {
-            $warnings.Add("$file does not have a managed block")
+            $warnings.Add("$file does not have a valid managed block")
             $score -= 3
         }
     }
@@ -612,7 +671,7 @@ function Invoke-Doctor {
         try {
             $skills = Get-Content $skillsPath -Raw | ConvertFrom-Json
             $documentedSkills = @($skills.skills.required | ForEach-Object { $_.name })
-            foreach ($requiredSkill in (Get-RequiredSkills -Archetype $archetype -Profile 'standard').required) {
+            foreach ($requiredSkill in (Get-RequiredSkills -Archetype $archetype -Profile $profile).required) {
                 if ($documentedSkills -contains $requiredSkill) {
                     $passing.Add("$requiredSkill skill documented")
                 } else {
@@ -622,21 +681,6 @@ function Invoke-Doctor {
             }
         } catch {
             $blocking.Add('.ai-skills.json is not parseable')
-            $score -= 10
-        }
-    }
-    $lockPath = Join-Path $root '.agent-workflow.lock.json'
-    if (Test-Path $lockPath) {
-        try {
-            $lock = Get-Content $lockPath -Raw | ConvertFrom-Json
-            if ($lock.archetype -eq $archetype) {
-                $passing.Add('lock file archetype matches detection')
-            } else {
-                $warnings.Add("lock archetype '$($lock.archetype)' differs from detected '$archetype'")
-                $score -= 4
-            }
-        } catch {
-            $blocking.Add('.agent-workflow.lock.json is not parseable')
             $score -= 10
         }
     }
@@ -666,7 +710,7 @@ function Invoke-Doctor {
 }
 
 function Invoke-Upgrade {
-    $script:Apply = $true
+    if (-not $Apply.IsPresent) { $script:DryRun = $true }
     Invoke-Init
 }
 

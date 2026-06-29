@@ -2,7 +2,7 @@
 
 ## Current status
 
-- Status: v0.3.0 project-workflow initializer roadmap implementation complete
+- Status: v0.3.0 production hardening verified; publication commit pending
 - Last updated: 2026-06-29
 
 ## Active branch
@@ -15,6 +15,18 @@
 - Task IDs: None
 
 ## Recent work
+
+### v0.3.0 production hardening (2026-06-29)
+
+- Made managed block markers immutable non-empty constants and validate exactly one ordered marker pair.
+- Replaced regex-based upgrade writes with exact index-based block replacement that preserves owner text outside the block and does not append content.
+- Added regression coverage for unmanaged AGENTS.md proposals, generated marker pairs, two-sided owner content, and incomplete marker detection.
+- Added `.gitattributes`, recursive anti-collapse checks, and `.github/workflows/verify.yml`.
+- Verified all five companion guards are installable from `amElnagdy/guard-skills`; generated policy records real commands but keeps them unapproved/manual by default.
+- Corrected generated `project-workflow` installation policy to use the GitHub repository rather than a target-relative `.` source.
+- Corrected doctor to honor an explicit lock archetype/profile when filesystem detection is unknown.
+- Verification run: `scripts/test-workflow.ps1` passed with 100 passes, 4 expected missing-YAML-parser warnings, and 0 failures.
+- Manual WordPress/Spec Kit smoke: dry-run wrote nothing; apply completed; doctor returned `ready`, score 100, 0 warnings, and 0 blockers.
 
 ### v0.3.0 CLI initializer MVP (2026-06-29)
 
@@ -83,7 +95,7 @@
 
 ## Next recommended step
 
-- Reinstall the global skill with `.\scripts\install-global.ps1`.
+- Reinstall the global skill with `.\scripts\install-global.ps1` or the documented GitHub-source command.
 - Run the documented WordPress starter command in a real project:
   `.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -Apply`.
 - Tag v0.3.0 when the owner is ready to publish the release.
@@ -97,7 +109,7 @@
 
 ## Open blockers
 
-- None. Branch is clean and all tests pass.
+- None. The release commit and remote push are the remaining publication steps.
 
 ## Future improvements
 

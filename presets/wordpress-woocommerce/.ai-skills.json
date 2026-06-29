@@ -1,4 +1,4 @@
-﻿{
+{
     "version":  "1.0",
     "install_mode":  "ask",
     "skills":  {
@@ -6,32 +6,32 @@
                                     {
                                         "name":  "project-workflow",
                                         "install_approved":  true,
-                                        "install_command":  "npx -y skills add . --skill project-workflow --global --agent claude-code --agent codex --copy"
+                                        "install_command":  "npx -y skills add MustafaShaaban/agent-project-workflow --skill project-workflow --global --agent claude-code --agent codex --copy"
                                     },
                                     {
                                         "name":  "clean-code-guard",
                                         "install_approved":  false,
-                                        "install_command":  null
+                                        "install_command":  "npx -y skills add amElnagdy/guard-skills --skill clean-code-guard --global --agent claude-code --agent codex --copy"
                                     },
                                     {
                                         "name":  "test-guard",
                                         "install_approved":  false,
-                                        "install_command":  null
+                                        "install_command":  "npx -y skills add amElnagdy/guard-skills --skill test-guard --global --agent claude-code --agent codex --copy"
                                     },
                                     {
                                         "name":  "docs-guard",
                                         "install_approved":  false,
-                                        "install_command":  null
+                                        "install_command":  "npx -y skills add amElnagdy/guard-skills --skill docs-guard --global --agent claude-code --agent codex --copy"
                                     },
                                     {
                                         "name":  "wp-guard",
                                         "install_approved":  false,
-                                        "install_command":  null
+                                        "install_command":  "npx -y skills add amElnagdy/guard-skills --skill wp-guard --global --agent claude-code --agent codex --copy"
                                     },
                                     {
                                         "name":  "woo-guard",
                                         "install_approved":  false,
-                                        "install_command":  null
+                                        "install_command":  "npx -y skills add amElnagdy/guard-skills --skill woo-guard --global --agent claude-code --agent codex --copy"
                                     }
                                 ],
                    "optional":  [

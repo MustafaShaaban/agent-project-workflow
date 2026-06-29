@@ -18,6 +18,21 @@ Verify the new version is active:
 
 Restart any running agent session so it reloads the updated skill.
 
+## Upgrading project-managed files
+
+Preview the upgrade first, then apply it:
+
+```powershell
+.\scripts\project-workflow.ps1 upgrade -TargetPath C:\path\to\project -Type wordpress-site -DryRun
+.\scripts\project-workflow.ps1 upgrade -TargetPath C:\path\to\project -Type wordpress-site -Apply
+```
+
+Upgrade changes only content between the exact
+`<!-- agent-project-workflow:start -->` and
+`<!-- agent-project-workflow:end -->` markers. Content outside the block is
+owner-managed and preserved. A file without exactly one ordered marker pair is
+not overwritten; the CLI writes a `.suggested.md` proposal.
+
 ## Adding `.ai-workflow.yml` to an existing bootstrapped project
 
 If your project was bootstrapped with v0.1.0 (before `.ai-workflow.yml` existed),
@@ -99,7 +114,7 @@ you want to adopt strict Git Flow:
 The migration never rewrites history, deletes branches, or makes changes automatically.
 Each step requires explicit owner approval.
 
-## What does NOT change during upgrade
+## What does NOT change during a global skill upgrade
 
 - Your project's `AGENTS.md`, `CLAUDE.md`, `PROGRESS.md`, `DECISIONS.md` — never touched
 - Your project's branching history or commit history — never modified

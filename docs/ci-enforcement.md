@@ -16,3 +16,8 @@ Minimum CI expectations:
 - Validate required skills are documented.
 - Validate automatic activation and NEXT STEP rules exist.
 - Run repository-specific tests after workflow checks.
+
+This repository uses `.github/workflows/verify.yml` to run the complete
+`scripts/test-workflow.ps1` suite and `git diff --check` on Windows for pushes
+and pull requests targeting `master`. Downstream repositories can start from
+`templates/github/ci-guards.yml` or `templates/azure-devops/ci-guards.yml`.

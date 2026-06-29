@@ -243,6 +243,15 @@ try {
         } else {
             Write-Fail 'doctor output must include readiness score and recommended next step'
         }
+
+        $initializedDoctor = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+            doctor -TargetPath $cliSmokeRoot -Json 2>$null | ConvertFrom-Json
+        if ((($initializedDoctor.passing -join ' ') -match 'wp-guard skill documented') -and
+            (($initializedDoctor.warnings -join ' ') -notmatch "differs from detected 'unknown'")) {
+            Write-Pass 'doctor honors explicit lock archetype when filesystem detection is unknown'
+        } else {
+            Write-Fail 'doctor must use the lock archetype/profile for an explicitly initialized project'
+        }
     }
 } catch {
     Write-Fail "project-workflow CLI smoke failed: $_"
@@ -259,13 +268,27 @@ $cliBehaviorRoot = Join-Path ([System.IO.Path]::GetTempPath()) "apw-cli-behavior
 try {
     New-Item -ItemType Directory -Path $cliBehaviorRoot -Force | Out-Null
 
+    $cliSource = Get-Content -LiteralPath $cliScript -Raw
+    $constantMarkerPattern = 'Set-Variable\s+-Name\s+Managed(Start|End)\s+-Value\s+''<!-- agent-project-workflow:(start|end) -->''\s+-Option\s+Constant\s+-Scope\s+Script'
+    $constantMarkerMatches = [regex]::Matches($cliSource, $constantMarkerPattern)
+    if ($constantMarkerMatches.Count -eq 2) {
+        Write-Pass 'managed block markers are explicit non-empty script constants'
+    } else {
+        Write-Fail 'ManagedStart and ManagedEnd must be explicit non-empty script constants'
+    }
+
     $conflictRoot = Join-Path $cliBehaviorRoot 'conflict'
     New-Item -ItemType Directory -Path $conflictRoot -Force | Out-Null
-    Set-Content -LiteralPath (Join-Path $conflictRoot 'AGENTS.md') -Value '# Owner instructions' -Encoding UTF8
+    $originalOwnerText = "# Owner instructions`n`nThis file belongs to the project owner."
+    Set-Content -LiteralPath (Join-Path $conflictRoot 'AGENTS.md') -Value $originalOwnerText -Encoding UTF8 -NoNewline
     & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
         init -TargetPath $conflictRoot -Type generic -Apply 2>&1 | Out-Null
     $ownerText = Get-Content (Join-Path $conflictRoot 'AGENTS.md') -Raw
-    if (($ownerText -match 'Owner instructions') -and (Test-Path (Join-Path $conflictRoot 'AGENTS.md.suggested.md'))) {
+    $suggestedPath = Join-Path $conflictRoot 'AGENTS.md.suggested.md'
+    $suggestedText = if (Test-Path $suggestedPath) { Get-Content $suggestedPath -Raw } else { '' }
+    if (($ownerText -ceq $originalOwnerText) -and
+        ($suggestedText -match [regex]::Escape('<!-- agent-project-workflow:start -->')) -and
+        ($suggestedText -match [regex]::Escape('<!-- agent-project-workflow:end -->'))) {
         Write-Pass 'init preserves unmanaged files and creates .suggested.md proposals'
     } else {
         Write-Fail 'init must preserve unmanaged files and create .suggested.md proposals'
@@ -275,13 +298,45 @@ try {
     New-Item -ItemType Directory -Path $upgradeRoot -Force | Out-Null
     & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
         init -TargetPath $upgradeRoot -Type generic -Apply 2>&1 | Out-Null
-    Add-Content -LiteralPath (Join-Path $upgradeRoot 'AGENTS.md') -Value "`nOwner upgrade note."
+    $upgradeAgentsPath = Join-Path $upgradeRoot 'AGENTS.md'
+    $managedAgents = Get-Content $upgradeAgentsPath -Raw
+    $ownerPrefix = "Owner preface before workflow.`r`n`r`n"
+    $ownerSuffix = "`r`n`r`nOwner appendix after workflow."
+    Set-Content -LiteralPath $upgradeAgentsPath -Value ($ownerPrefix + $managedAgents.TrimEnd("`r", "`n") + $ownerSuffix) -Encoding UTF8 -NoNewline
     & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
         upgrade -TargetPath $upgradeRoot -Type generic -Apply 2>&1 | Out-Null
-    if ((Get-Content (Join-Path $upgradeRoot 'AGENTS.md') -Raw) -match 'Owner upgrade note') {
+    $upgradedAgents = Get-Content $upgradeAgentsPath -Raw
+    if ($upgradedAgents.StartsWith($ownerPrefix) -and $upgradedAgents.EndsWith($ownerSuffix)) {
         Write-Pass 'upgrade preserves content outside managed blocks'
     } else {
         Write-Fail 'upgrade must preserve content outside managed blocks'
+    }
+
+    $managedFiles = @('AGENTS.md', 'CLAUDE.md', 'PROJECT-WORKING-GUIDE.md', 'specs\constitution.md')
+    $markerFailures = [System.Collections.Generic.List[string]]::new()
+    foreach ($managedFile in $managedFiles) {
+        $managedText = Get-Content (Join-Path $upgradeRoot $managedFile) -Raw
+        $startCount = ([regex]::Matches($managedText, [regex]::Escape('<!-- agent-project-workflow:start -->'))).Count
+        $endCount = ([regex]::Matches($managedText, [regex]::Escape('<!-- agent-project-workflow:end -->'))).Count
+        if (($startCount -ne 1) -or ($endCount -ne 1)) { $markerFailures.Add($managedFile) }
+    }
+    if ($markerFailures.Count -eq 0) {
+        Write-Pass 'generated managed files contain one exact start and end marker'
+    } else {
+        Write-Fail "generated managed files have invalid marker pairs: $($markerFailures -join ', ')"
+    }
+
+    $brokenMarkerRoot = Join-Path $cliBehaviorRoot 'broken-marker'
+    Copy-Item -LiteralPath $upgradeRoot -Destination $brokenMarkerRoot -Recurse
+    $brokenConstitutionPath = Join-Path $brokenMarkerRoot 'specs\constitution.md'
+    $brokenConstitution = (Get-Content $brokenConstitutionPath -Raw).Replace('<!-- agent-project-workflow:end -->', '')
+    Set-Content -LiteralPath $brokenConstitutionPath -Value $brokenConstitution -Encoding UTF8 -NoNewline
+    $brokenDoctor = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        doctor -TargetPath $brokenMarkerRoot -Json 2>$null | ConvertFrom-Json
+    if (($brokenDoctor.warnings -join ' ') -match 'specs\\constitution.md does not have a valid managed block') {
+        Write-Pass 'doctor rejects incomplete managed marker pairs'
+    } else {
+        Write-Fail 'doctor must reject a managed block with a missing end marker'
     }
 
     $archetypes = @(
@@ -551,6 +606,55 @@ foreach ($fc in $formatChecks) {
     } else {
         Write-Pass "$($fc.rel): $count lines, longest $maxLen chars"
     }
+}
+
+$skillPolicy = Get-Content (Join-Path $repoRoot 'templates\.ai-skills.json') -Raw | ConvertFrom-Json
+$documentedSkills = @($skillPolicy.skills.required) + @($skillPolicy.skills.conditional_required)
+$guardNames = @('clean-code-guard', 'test-guard', 'docs-guard', 'wp-guard', 'woo-guard')
+$invalidGuardPolicies = [System.Collections.Generic.List[string]]::new()
+foreach ($guardName in $guardNames) {
+    $guard = @($documentedSkills | Where-Object { $_.name -eq $guardName }) | Select-Object -First 1
+    if (-not $guard -or
+        $guard.install_approved -ne $false -or
+        $guard.install_command -ne "npx -y skills add amElnagdy/guard-skills --skill $guardName --global --agent claude-code --agent codex --copy") {
+        $invalidGuardPolicies.Add($guardName)
+    }
+}
+if ($invalidGuardPolicies.Count -eq 0) {
+    Write-Pass 'companion guards have verified manual install commands'
+} else {
+    Write-Fail "companion guard install policy is incomplete: $($invalidGuardPolicies -join ', ')"
+}
+
+$formatScope = @(
+    Get-ChildItem (Join-Path $repoRoot 'docs') -File -Filter '*.md'
+    Get-ChildItem (Join-Path $repoRoot 'presets') -File -Recurse
+    Get-ChildItem (Join-Path $repoRoot 'scripts') -File -Recurse -Filter '*.ps1'
+)
+$collapsedFiles = [System.Collections.Generic.List[string]]::new()
+foreach ($file in $formatScope) {
+    $lines = @(Get-Content -LiteralPath $file.FullName)
+    $maxLength = ($lines | Measure-Object -Property Length -Maximum).Maximum
+    if (($lines.Count -lt 2) -or ($maxLength -gt 500)) {
+        $collapsedFiles.Add($file.FullName.Substring($repoRoot.Length + 1))
+    }
+}
+if ($collapsedFiles.Count -eq 0) {
+    Write-Pass "docs, presets, and scripts are not collapsed ($($formatScope.Count) files checked)"
+} else {
+    Write-Fail "collapsed files detected: $($collapsedFiles -join ', ')"
+}
+
+if (Test-Path (Join-Path $repoRoot '.gitattributes')) {
+    Write-Pass '.gitattributes defines repository line-ending policy'
+} else {
+    Write-Fail '.gitattributes is required for deterministic line endings'
+}
+
+if (Test-Path (Join-Path $repoRoot '.github\workflows\verify.yml')) {
+    Write-Pass 'repository self-verification CI workflow exists'
+} else {
+    Write-Fail '.github/workflows/verify.yml is required for repository self-validation'
 }
 
 # ─── Result ────────────────────────────────────────────────────────────────
