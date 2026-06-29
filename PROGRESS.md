@@ -2,12 +2,12 @@
 
 ## Current status
 
-- Status: v0.3.0 initializer completion slice implemented locally; pending commit, push, PR, and merge
+- Status: v0.3.0 project-workflow initializer roadmap merged to `master`
 - Last updated: 2026-06-29
 
 ## Active branch
 
-- Branch: `pw-initializer-completion`
+- Branch: `docs/v0.3.0-release-state` (release-state documentation only)
 
 ## Active spec
 
@@ -76,10 +76,17 @@
 
 ## Next recommended step
 
-- Commit the v0.3.0 initializer completion slice.
-- Push `pw-initializer-completion`.
-- Open/update a PR into `master`.
-- If checks and permissions allow, merge; otherwise leave the PR with exact blockers.
+- Reinstall the global skill with `.\scripts\install-global.ps1`.
+- Run the documented WordPress starter command in a real project:
+  `.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -Apply`.
+- Tag v0.3.0 when the owner is ready to publish the release.
+
+## Merge record
+
+- PR #5 merged: `feat: add project-workflow initializer CLI`
+- Merge commit: `675172752924199d70de24e15e1c525bba4a65f1`
+- PR #6 merged: `feat: complete presets and workflow diagnostics`
+- Merge commit: `d10a6ed`
 
 ## Open blockers
 
