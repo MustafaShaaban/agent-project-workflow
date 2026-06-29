@@ -79,6 +79,8 @@ Install only approved skills:
 
 The older scripts remain available for focused checks, but `scripts/project-workflow.ps1` is the primary command surface.
 
+The CLI auto-detects standalone WordPress plugins, themes, blocks, Bedrock projects, WooCommerce extensions, and whole WordPress sites. `audit -Json` reports the detected archetype, and `doctor -Json` exposes readiness score, warnings, blocking items, and the recommended next action.
+
 ## Project config
 
 Copy `.ai-workflow.yml` to your project root and adjust:

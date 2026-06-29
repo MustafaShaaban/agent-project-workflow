@@ -71,18 +71,7 @@ function Get-WfProjectType {
     #>
     param([string]$ProjectRoot)
 
-    $wpIndicators = @('wp-config.php','wp-config-sample.php','wp-login.php','wp-blog-header.php','wp-content')
-    foreach ($i in $wpIndicators) {
-        if (Test-Path (Join-Path $ProjectRoot $i)) { return 'wordpress' }
-    }
-    if (Test-Path (Join-Path $ProjectRoot 'composer.json')) {
-        $c = Get-Content (Join-Path $ProjectRoot 'composer.json') -Raw -ErrorAction SilentlyContinue
-        if ($c -match 'johnpbloch/wordpress|roots/bedrock|wpackagist') { return 'wordpress' }
-    }
-    if (Test-Path (Join-Path $ProjectRoot 'package.json')) {
-        $p = Get-Content (Join-Path $ProjectRoot 'package.json') -Raw -ErrorAction SilentlyContinue
-        if ($p -match '"@wordpress/') { return 'wordpress' }
-    }
+    if ((Get-WfArchetype -ProjectRoot $ProjectRoot) -match '^wordpress') { return 'wordpress' }
     if (Test-Path (Join-Path $ProjectRoot 'artisan')) { return 'laravel' }
     if (Test-Path (Join-Path $ProjectRoot 'package.json')) {
         $p = Get-Content (Join-Path $ProjectRoot 'package.json') -Raw -ErrorAction SilentlyContinue
@@ -97,6 +86,105 @@ function Get-WfProjectType {
         (Get-ChildItem $ProjectRoot -Filter '*.csproj' -ErrorAction SilentlyContinue)) { return 'dotnet' }
     if ((Test-Path (Join-Path $ProjectRoot 'requirements.txt')) -or
         (Test-Path (Join-Path $ProjectRoot 'pyproject.toml')))  { return 'python' }
+    return 'unknown'
+}
+
+function Test-WfWooCommerce {
+    <#
+    .SYNOPSIS Returns $true when WooCommerce project or extension indicators are found.
+    #>
+    param([string]$ProjectRoot)
+
+    foreach ($relativePath in @(
+        'wp-content\plugins\woocommerce',
+        'woocommerce.php'
+    )) {
+        if (Test-Path (Join-Path $ProjectRoot $relativePath)) { return $true }
+    }
+
+    foreach ($manifest in @('composer.json', 'package.json')) {
+        $path = Join-Path $ProjectRoot $manifest
+        if (Test-Path $path) {
+            $content = Get-Content $path -Raw -ErrorAction SilentlyContinue
+            if ($content -match 'woocommerce|automattic/woocommerce|@woocommerce/') { return $true }
+        }
+    }
+
+    $sourceFiles = Get-ChildItem -Path $ProjectRoot -File -Recurse -Include '*.php','*.js','*.ts' -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/](vendor|node_modules|build|dist|cache|uploads)[\\/]' }
+    foreach ($file in $sourceFiles) {
+        if (Select-String -LiteralPath $file.FullName -Pattern 'WooCommerce|WC_Order|WC_Product|woocommerce_' -Quiet -ErrorAction SilentlyContinue) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Get-WfArchetype {
+    <#
+    .SYNOPSIS Detects the project archetype used by project-workflow presets.
+    #>
+    param([string]$ProjectRoot)
+
+    if (Test-WfWooCommerce -ProjectRoot $ProjectRoot) { return 'wordpress-woocommerce' }
+
+    $composerPath = Join-Path $ProjectRoot 'composer.json'
+    if (Test-Path $composerPath) {
+        $composer = Get-Content $composerPath -Raw -ErrorAction SilentlyContinue
+        if ($composer -match 'roots/bedrock') { return 'wordpress-bedrock' }
+    }
+
+    if (Get-ChildItem -Path $ProjectRoot -Filter 'block.json' -File -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/](vendor|node_modules|build|dist|cache|uploads)[\\/]' } |
+        Select-Object -First 1) {
+        return 'wordpress-block'
+    }
+
+    $styleFiles = Get-ChildItem -Path $ProjectRoot -Filter 'style.css' -File -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/](vendor|node_modules|build|dist|cache|uploads)[\\/]' }
+    foreach ($styleFile in $styleFiles) {
+        if (Select-String -LiteralPath $styleFile.FullName -Pattern 'Theme Name\s*:' -Quiet -ErrorAction SilentlyContinue) {
+            return 'wordpress-theme'
+        }
+    }
+
+    $phpFiles = Get-ChildItem -Path $ProjectRoot -Filter '*.php' -File -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/](vendor|node_modules|build|dist|cache|uploads)[\\/]' }
+    foreach ($phpFile in $phpFiles) {
+        if (Select-String -LiteralPath $phpFile.FullName -Pattern 'Plugin Name\s*:' -Quiet -ErrorAction SilentlyContinue) {
+            return 'wordpress-plugin'
+        }
+    }
+
+    $wpIndicators = @('wp-config.php','wp-config-sample.php','wp-login.php','wp-blog-header.php','wp-content')
+    foreach ($indicator in $wpIndicators) {
+        if (Test-Path (Join-Path $ProjectRoot $indicator)) { return 'wordpress-site' }
+    }
+
+    if (Test-Path $composerPath) {
+        $composer = Get-Content $composerPath -Raw -ErrorAction SilentlyContinue
+        if ($composer -match 'johnpbloch/wordpress|wpackagist') { return 'wordpress' }
+    }
+    $packagePath = Join-Path $ProjectRoot 'package.json'
+    if (Test-Path $packagePath) {
+        $package = Get-Content $packagePath -Raw -ErrorAction SilentlyContinue
+        if ($package -match '"@wordpress/') { return 'wordpress' }
+    }
+
+    if (Test-Path (Join-Path $ProjectRoot 'artisan')) { return 'laravel' }
+    if (Test-Path $packagePath) {
+        $package = Get-Content $packagePath -Raw -ErrorAction SilentlyContinue
+        if ($package -match '"next"') { return 'nextjs' }
+        if ($package -match '"react"') { return 'react' }
+        if ($package -match '"vue"') { return 'vue' }
+        if ($package -match '"svelte"') { return 'svelte' }
+        return 'js-ts'
+    }
+    if (Test-Path $composerPath) { return 'php' }
+    if ((Get-ChildItem $ProjectRoot -Filter '*.sln' -ErrorAction SilentlyContinue) -or
+        (Get-ChildItem $ProjectRoot -Filter '*.csproj' -ErrorAction SilentlyContinue)) { return 'dotnet' }
+    if ((Test-Path (Join-Path $ProjectRoot 'requirements.txt')) -or
+        (Test-Path (Join-Path $ProjectRoot 'pyproject.toml'))) { return 'python' }
     return 'unknown'
 }
 
@@ -124,15 +212,5 @@ function Test-WfWordPress {
     .SYNOPSIS Returns $true if WordPress indicators are detected.
     #>
     param([string]$ProjectRoot)
-    $indicators = @('wp-config.php','wp-config-sample.php','wp-login.php','wp-blog-header.php','wp-content')
-    foreach ($i in $indicators) {
-        if (Test-Path (Join-Path $ProjectRoot $i)) { return $true }
-    }
-    try {
-        $c = Get-Content (Join-Path $ProjectRoot 'composer.json') -Raw -ErrorAction SilentlyContinue
-        if ($c -match 'johnpbloch/wordpress|roots/bedrock') { return $true }
-        $p = Get-Content (Join-Path $ProjectRoot 'package.json') -Raw -ErrorAction SilentlyContinue
-        if ($p -match '"@wordpress/') { return $true }
-    } catch {}
-    return $false
+    return (Get-WfArchetype -ProjectRoot $ProjectRoot) -match '^wordpress'
 }

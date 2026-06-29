@@ -1,0 +1,40 @@
+﻿{
+    "version":  "1.0",
+    "install_mode":  "ask",
+    "skills":  {
+                   "required":  [
+                                    {
+                                        "name":  "project-workflow",
+                                        "install_approved":  true,
+                                        "install_command":  "npx -y skills add . --skill project-workflow --global --agent claude-code --agent codex --copy"
+                                    },
+                                    {
+                                        "name":  "clean-code-guard",
+                                        "install_approved":  false,
+                                        "install_command":  null
+                                    },
+                                    {
+                                        "name":  "test-guard",
+                                        "install_approved":  false,
+                                        "install_command":  null
+                                    },
+                                    {
+                                        "name":  "docs-guard",
+                                        "install_approved":  false,
+                                        "install_command":  null
+                                    },
+                                    {
+                                        "name":  "wp-guard",
+                                        "install_approved":  false,
+                                        "install_command":  null
+                                    }
+                                ],
+                   "optional":  [
+                                    "wp-plugin-development",
+                                    "wp-block-development",
+                                    "wp-performance",
+                                    "wp-phpstan",
+                                    "wp-playground"
+                                ]
+               }
+}

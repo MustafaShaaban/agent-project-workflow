@@ -36,3 +36,11 @@ Recommended next command after initialization:
 ```powershell
 .\scripts\project-workflow.ps1 doctor
 ```
+
+Machine-readable doctor output:
+
+```powershell
+.\scripts\project-workflow.ps1 doctor -Json
+```
+
+When `-SpecKit` is requested, the CLI preserves existing `.specify/` state. For a new setup it attempts `specify integration list`, falls back to `specify check` when listing requires an initialized project, initializes the first requested integration, installs additional integrations, and records the exact commands/status in `.agent-workflow.lock.json`.

@@ -63,17 +63,7 @@ function Get-CiStatus {
 function Get-Archetype {
     param([string]$Root, [string]$RequestedType)
     if ($RequestedType -ne 'auto') { return $RequestedType }
-
-    $detected = Get-WfProjectType -ProjectRoot $Root
-    if ($detected -eq 'wordpress') {
-        if (Test-Path (Join-Path $Root 'wp-content\mu-plugins')) { return 'wordpress-site' }
-        if (Get-ChildItem -Path $Root -Filter '*.php' -Recurse -ErrorAction SilentlyContinue | Select-String -Pattern 'Plugin Name:' -Quiet) { return 'wordpress-plugin' }
-        if (Get-ChildItem -Path $Root -Filter 'style.css' -Recurse -ErrorAction SilentlyContinue | Select-String -Pattern 'Theme Name:' -Quiet) { return 'wordpress-theme' }
-        if (Get-ChildItem -Path $Root -Filter 'block.json' -Recurse -ErrorAction SilentlyContinue) { return 'wordpress-block' }
-        return 'wordpress'
-    }
-    if ($detected -eq 'js/ts') { return 'js-ts' }
-    return $detected
+    return Get-WfArchetype -ProjectRoot $Root
 }
 
 function Get-ProjectTypeFromArchetype {
@@ -200,7 +190,16 @@ function Set-WorkflowFile {
 }
 
 function New-WorkflowLock {
-    param([string]$Root, [string]$Archetype, [string]$Profile, [bool]$SpecKitEnabled, [string[]]$Agents, [string[]]$GeneratedFiles)
+    param(
+        [string]$Root,
+        [string]$Archetype,
+        [string]$Profile,
+        [bool]$SpecKitEnabled,
+        [string[]]$Agents,
+        [string[]]$GeneratedFiles,
+        [string]$SpecKitStatus,
+        [string[]]$SpecKitCommands
+    )
     $platform = Get-WfPlatform -ProjectRoot $Root
     $ci = Get-CiStatus -Root $Root
     $skills = Get-RequiredSkills -Archetype $Archetype -Profile $Profile
@@ -221,7 +220,8 @@ function New-WorkflowLock {
             enabled = $SpecKitEnabled
             integrations = $Agents
             skills_mode = $true
-            status = if ($SpecKitEnabled) { 'requested' } else { 'disabled' }
+            status = $SpecKitStatus
+            commands = $SpecKitCommands
         }
         skills = [ordered]@{
             install_mode = 'ask'
@@ -242,6 +242,86 @@ function New-WorkflowLock {
     }
 }
 
+function Get-NormalizedAgents {
+    param([string[]]$AgentValues)
+    return @($AgentValues | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique)
+}
+
+function Invoke-SpecKitSetup {
+    param([string]$Root, [bool]$ApplyChanges, [string[]]$RequestedAgents)
+    $result = [ordered]@{
+        status = 'disabled'
+        commands = @()
+    }
+    if (-not $SpecKit) { return $result }
+
+    if (Test-Path (Join-Path $Root '.specify')) {
+        Write-InfoLine 'Spec Kit already present: preserving existing .specify/ state.'
+        $result.status = 'existing-preserved'
+        return $result
+    }
+
+    $specify = Get-Command specify -ErrorAction SilentlyContinue
+    if (-not $specify) {
+        Write-InfoLine 'Spec Kit requested but `specify` was not found.'
+        $result.status = 'requested-unavailable'
+        return $result
+    }
+
+    $listCommand = 'specify integration list'
+    $result.commands += $listCommand
+    $integrationOutput = & specify integration list 2>&1 | Out-String
+    $listExitCode = $LASTEXITCODE
+    Write-InfoLine $listCommand
+    if ($listExitCode -ne 0) {
+        $checkCommand = 'specify check'
+        $result.commands += $checkCommand
+        $integrationOutput = & specify check 2>&1 | Out-String
+        Write-InfoLine "$listCommand was unavailable before initialization; used $checkCommand for tool availability."
+    }
+
+    if (-not $ApplyChanges) {
+        foreach ($agent in $RequestedAgents) {
+            $candidate = if ($agent -eq 'claude-code') { 'claude' } else { $agent }
+            $result.commands += "specify init --here --force --integration $candidate"
+        }
+        $result.status = 'available-dry-run'
+        return $result
+    }
+
+    Push-Location $Root
+    try {
+        $initialized = [System.Collections.Generic.List[string]]::new()
+        $resolvedIntegrations = @($RequestedAgents | ForEach-Object {
+            if ($_ -eq 'claude-code') { 'claude' } else { $_ }
+        } | Select-Object -Unique)
+        for ($index = 0; $index -lt $resolvedIntegrations.Count; $index++) {
+            $integration = $resolvedIntegrations[$index]
+            if ($integrationOutput -notmatch "(?im)\b$([regex]::Escape($integration))\b") {
+                Write-InfoLine "Spec Kit did not report integration '$integration'; using the explicit requested identifier."
+            }
+            $commandText = if ($index -eq 0) {
+                "specify init --here --force --integration $integration"
+            } else {
+                "specify integration install --force $integration"
+            }
+            $result.commands += $commandText
+            Write-InfoLine $commandText
+            if ($index -eq 0) {
+                & specify init --here --force --integration $integration
+            } else {
+                & specify integration install --force $integration
+            }
+            if ($LASTEXITCODE -ne 0) { throw "Spec Kit initialization failed for integration '$integration'." }
+            $initialized.Add($integration)
+        }
+        $result.status = if ($initialized.Count -gt 0) { 'initialized' } else { 'available-no-matching-integration' }
+    } finally {
+        Pop-Location
+    }
+    return $result
+}
+
 function Invoke-Init {
     $root = Resolve-TargetRoot -Path $TargetPath
     $applyChanges = $Apply.IsPresent
@@ -258,6 +338,7 @@ function Invoke-Init {
     $generated = [System.Collections.Generic.List[string]]::new()
     $suggested = [System.Collections.Generic.List[string]]::new()
     $skipped = [System.Collections.Generic.List[string]]::new()
+    $normalizedAgents = Get-NormalizedAgents -AgentValues $Agents
     $startup = Get-StartupSequenceText
     $constitutionBody = Get-ConstitutionBody -Archetype $archetype
 
@@ -281,23 +362,16 @@ $startup
     Set-WorkflowFile -Root $root -RelativePath '.ai-workflow.yml' -Content (Get-WorkflowConfigTemplate -Archetype $archetype -Profile $Profile) -ApplyChanges $applyChanges -Generated $generated -Suggested $suggested -Skipped $skipped
     Set-WorkflowFile -Root $root -RelativePath '.ai-skills.json' -Content (Get-SkillsJson -Archetype $archetype -Profile $Profile) -ApplyChanges $applyChanges -Generated $generated -Suggested $suggested -Skipped $skipped
 
+    $specKitResult = Invoke-SpecKitSetup -Root $root -ApplyChanges $applyChanges -RequestedAgents $normalizedAgents
+
     if ($applyChanges) {
         Set-UserOwnedFile -Root $root -RelativePath 'PROGRESS.md' -Content (Get-ProgressTemplate)
         Set-UserOwnedFile -Root $root -RelativePath 'DECISIONS.md' -Content (Get-DecisionsTemplate -Archetype $archetype -Profile $Profile)
-        $lock = New-WorkflowLock -Root $root -Archetype $archetype -Profile $Profile -SpecKitEnabled $SpecKit.IsPresent -Agents $Agents -GeneratedFiles $generated.ToArray()
+        $lock = New-WorkflowLock -Root $root -Archetype $archetype -Profile $Profile -SpecKitEnabled $SpecKit.IsPresent -Agents $normalizedAgents -GeneratedFiles $generated.ToArray() -SpecKitStatus $specKitResult.status -SpecKitCommands $specKitResult.commands
         $lock | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $root '.agent-workflow.lock.json') -Encoding UTF8
         Write-InfoLine 'CREATED: .agent-workflow.lock.json'
     } else {
         Write-InfoLine 'DRY-RUN: would create/update .agent-workflow.lock.json'
-    }
-
-    if ($SpecKit) {
-        $specify = Get-Command specify -ErrorAction SilentlyContinue
-        if ($specify) {
-            Write-InfoLine 'Spec Kit requested: run `specify integration list` before initializing integrations.'
-        } else {
-            Write-InfoLine 'Spec Kit requested but `specify` was not found. Lock file records requested status; install Spec Kit before initialization.'
-        }
     }
 
     Write-InfoLine "Recommended next command: .\scripts\project-workflow.ps1 doctor -TargetPath `"$root`""
@@ -492,6 +566,7 @@ function Invoke-Audit {
 
 function Invoke-Doctor {
     $root = Resolve-TargetRoot -Path $TargetPath
+    $archetype = Get-WfArchetype -ProjectRoot $root
     $score = 100
     $passing = [System.Collections.Generic.List[string]]::new()
     $warnings = [System.Collections.Generic.List[string]]::new()
@@ -520,13 +595,49 @@ function Invoke-Doctor {
     if (Test-Path $skillsPath) {
         try {
             $skills = Get-Content $skillsPath -Raw | ConvertFrom-Json
-            if (($skills.skills.required | ForEach-Object { $_.name }) -contains 'project-workflow') { $passing.Add('project-workflow skill documented') } else { $blocking.Add('project-workflow skill missing'); $score -= 8 }
+            $documentedSkills = @($skills.skills.required | ForEach-Object { $_.name })
+            foreach ($requiredSkill in (Get-RequiredSkills -Archetype $archetype -Profile 'standard').required) {
+                if ($documentedSkills -contains $requiredSkill) {
+                    $passing.Add("$requiredSkill skill documented")
+                } else {
+                    $blocking.Add("$requiredSkill skill missing for $archetype")
+                    $score -= 8
+                }
+            }
         } catch {
             $blocking.Add('.ai-skills.json is not parseable')
             $score -= 10
         }
     }
+    $lockPath = Join-Path $root '.agent-workflow.lock.json'
+    if (Test-Path $lockPath) {
+        try {
+            $lock = Get-Content $lockPath -Raw | ConvertFrom-Json
+            if ($lock.archetype -eq $archetype) {
+                $passing.Add('lock file archetype matches detection')
+            } else {
+                $warnings.Add("lock archetype '$($lock.archetype)' differs from detected '$archetype'")
+                $score -= 4
+            }
+        } catch {
+            $blocking.Add('.agent-workflow.lock.json is not parseable')
+            $score -= 10
+        }
+    }
     if ($score -lt 0) { $score = 0 }
+
+    $recommendedNext = if ($blocking.Count -gt 0) { 'Run project-workflow init --apply or review suggested files.' } else { 'Run project-workflow audit before the next project task.' }
+    if ($Json) {
+        [ordered]@{
+            score = $score
+            status = if ($blocking.Count -gt 0) { 'blocking' } elseif ($warnings.Count -gt 0) { 'warning' } else { 'ready' }
+            passing = $passing.ToArray()
+            warnings = $warnings.ToArray()
+            blocking = $blocking.ToArray()
+            recommended_next = $recommendedNext
+        } | ConvertTo-Json -Depth 5
+        return
+    }
 
     Write-InfoLine "Workflow readiness: $score/100"
     Write-InfoLine 'Passing:'
@@ -535,7 +646,7 @@ function Invoke-Doctor {
     if ($warnings.Count -eq 0) { Write-InfoLine '  - None' } else { foreach ($item in $warnings) { Write-InfoLine "  - $item" } }
     Write-InfoLine 'Blocking:'
     if ($blocking.Count -eq 0) { Write-InfoLine '  - None' } else { foreach ($item in $blocking) { Write-InfoLine "  - $item" } }
-    Write-InfoLine "Recommended next: $(if ($blocking.Count -gt 0) { 'Run project-workflow init --apply or review suggested files.' } else { 'Run project-workflow audit before the next project task.' })"
+    Write-InfoLine "Recommended next: $recommendedNext"
 }
 
 function Invoke-Upgrade {

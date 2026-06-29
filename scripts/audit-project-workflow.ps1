@@ -28,6 +28,8 @@ $jsonMode = $OutputFormat -eq 'Json'
 
 $ErrorActionPreference = 'Stop'
 $target = [System.IO.Path]::GetFullPath($TargetPath)
+$repoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'lib\WorkflowDetection.ps1')
 
 # Collected audit data for JSON output
 $auditData = @{
@@ -35,6 +37,7 @@ $auditData = @{
     project_root         = $target
     platform             = 'unknown'
     project_type         = 'unknown'
+    archetype            = 'unknown'
     current_branch       = ''
     profile              = 'standard'
     branching_strategy   = 'unknown'
@@ -159,56 +162,14 @@ if (-not $ciDetected) {
 # ─── Project type detection ────────────────────────────────────────────────
 Write-Section "PROJECT TYPE"
 
-$projectType = "unknown"
-$isWordPress = $false
-
-$wpIndicators = @(
-    'wp-config.php', 'wp-config-sample.php', 'wp-login.php',
-    'wp-blog-header.php', 'wp-content'
-)
-foreach ($indicator in $wpIndicators) {
-    if (Test-Path (Join-Path $target $indicator)) {
-        $isWordPress = $true
-        break
-    }
-}
-if (-not $isWordPress -and (Test-Path (Join-Path $target 'composer.json'))) {
-    $composer = Get-Content (Join-Path $target 'composer.json') -Raw -ErrorAction SilentlyContinue
-    if ($composer -match 'johnpbloch/wordpress|roots/bedrock|wpackagist') {
-        $isWordPress = $true
-    }
-}
-if (-not $isWordPress -and (Test-Path (Join-Path $target 'package.json'))) {
-    $pkg = Get-Content (Join-Path $target 'package.json') -Raw -ErrorAction SilentlyContinue
-    if ($pkg -match '"@wordpress/') {
-        $isWordPress = $true
-    }
-}
-
-if ($isWordPress) {
-    $projectType = "wordpress"
-    Write-Ok "WordPress project detected"
-} elseif (Test-Path (Join-Path $target 'artisan')) {
-    $projectType = "laravel"
-    Write-Ok "Laravel project detected (artisan)"
-} elseif (Test-Path (Join-Path $target 'package.json')) {
-    $pkg = Get-Content (Join-Path $target 'package.json') -Raw -ErrorAction SilentlyContinue
-    if ($pkg -match '"react"') { $projectType = "react"; Write-Ok "React project (package.json)" }
-    elseif ($pkg -match '"vue"') { $projectType = "vue"; Write-Ok "Vue project (package.json)" }
-    elseif ($pkg -match '"svelte"') { $projectType = "svelte"; Write-Ok "Svelte project (package.json)" }
-    elseif ($pkg -match '"next"') { $projectType = "nextjs"; Write-Ok "Next.js project (package.json)" }
-    else { $projectType = "js/ts"; Write-Ok "JavaScript/TypeScript project (package.json)" }
-} elseif (Test-Path (Join-Path $target 'composer.json')) {
-    $projectType = "php"
-    Write-Ok "PHP project (composer.json)"
-} elseif ((Test-Path (Join-Path $target '*.sln')) -or (Test-Path (Join-Path $target '*.csproj'))) {
-    $projectType = "dotnet"
-    Write-Ok ".NET project"
-} elseif (Test-Path (Join-Path $target 'requirements.txt')) {
-    $projectType = "python"
-    Write-Ok "Python project (requirements.txt)"
-} else {
+$archetype = Get-WfArchetype -ProjectRoot $target
+$projectType = Get-WfProjectType -ProjectRoot $target
+$isWordPress = $archetype -match '^wordpress'
+if ($projectType -eq 'unknown') {
     Write-Info "Project type: unknown (no recognizable indicators)"
+} else {
+    Write-Ok "Project type: $projectType"
+    Write-Info "Archetype: $archetype"
 }
 
 # ─── Branch strategy detection ─────────────────────────────────────────────
@@ -331,12 +292,15 @@ if (Test-Path (Join-Path $target '.ai-skills.json')) {
 # ─── Collect JSON data at detection completion ─────────────────────────────
 $auditData.platform            = $platform
 $auditData.project_type        = $projectType
+$auditData.archetype           = $archetype
 $auditData.current_branch      = if ($currentBranch) { $currentBranch } else { '' }
 $auditData.branching_strategy  = $branchStrategy
 $auditData.risks               = $risks.ToArray()
 $auditData.failures            = @()
 $auditData.warnings            = $risks.ToArray()
-if ($isWordPress) { $auditData.skills_missing = @('wp-guard') }
+if ($isWordPress) {
+    $auditData.skills_missing = if ($archetype -eq 'wordpress-woocommerce') { @('wp-guard', 'woo-guard') } else { @('wp-guard') }
+}
 
 $resolvedNextStep = if ($nextStep) { $nextStep } `
     elseif (-not (Test-Path (Join-Path $target 'AGENTS.md'))) { 'Run bootstrap-project.ps1 to add missing workflow files.' } `
