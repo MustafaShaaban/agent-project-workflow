@@ -247,6 +247,18 @@ function Get-NormalizedAgents {
     return @($AgentValues | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique)
 }
 
+function Write-InitQuestion {
+    param([string]$Root)
+    Write-InfoLine 'Detected: No reliable project type or archetype indicators were found.'
+    Write-InfoLine 'Recommended: Select `generic` unless this directory is intended for a known framework or WordPress archetype.'
+    Write-InfoLine 'Why: Explicit selection prevents the workflow from generating the wrong constitution and required-skill policy.'
+    Write-InfoLine 'Alternatives: wordpress-site, wordpress-plugin, wordpress-theme, wordpress-block, wordpress-woocommerce, wordpress-bedrock, php, laravel, js-ts, react, vue, nextjs, python, dotnet, or unknown.'
+    Write-InfoLine 'Impact: The selected type controls generated rules, required guards, presets, and lock metadata.'
+    Write-InfoLine 'Question: Which project type should be initialized?'
+    Write-InfoLine 'Default if you approve: generic'
+    Write-InfoLine "Recommended next command: .\scripts\project-workflow.ps1 init -TargetPath `"$Root`" -Type generic -Profile standard -DryRun"
+}
+
 function Invoke-SpecKitSetup {
     param([string]$Root, [bool]$ApplyChanges, [string[]]$RequestedAgents)
     $result = [ordered]@{
@@ -328,6 +340,10 @@ function Invoke-Init {
     if (-not $applyChanges) { $DryRun = $true }
     $archetype = if ($Bundle) { ($Bundle -replace '-standard$','' -replace '-strict$','') } else { Get-Archetype -Root $root -RequestedType $Type }
     if ($Bundle -match 'strict') { $script:Profile = 'strict' }
+    if (($Type -eq 'auto') -and ($archetype -eq 'unknown')) {
+        Write-InitQuestion -Root $root
+        return
+    }
 
     Write-InfoLine "project-workflow init"
     Write-InfoLine "Target: $root"
@@ -679,12 +695,43 @@ function Invoke-InstallSkills {
             continue
         }
         if ($skill.install_command) {
-            Write-InfoLine "APPROVED COMMAND: $($skill.install_command)"
+            if ($ApprovedOnly) {
+                Invoke-ApprovedSkillCommand -Root $root -SkillName $skill.name -CommandText $skill.install_command
+            } else {
+                Write-InfoLine "Detected: Missing or requested skill '$($skill.name)'."
+                Write-InfoLine "Recommended: Run the documented command after approval: $($skill.install_command)"
+                Write-InfoLine 'Why: Skill installation changes global or local agent tooling.'
+                Write-InfoLine 'Alternatives: Mark the skill manual, set install_mode to never, or use -ApprovedOnly for approved commands.'
+                Write-InfoLine 'Impact: Work requiring this skill may remain blocked or carry an explicit risk.'
+                Write-InfoLine "Question: Approve installation of '$($skill.name)'?"
+                Write-InfoLine 'Default if you approve: Run the documented command.'
+            }
         } else {
             Write-InfoLine "MANUAL: $($skill.name) has no safe install command."
         }
     }
     Write-InfoLine 'Recommended next command: project-workflow doctor'
+}
+
+function Invoke-ApprovedSkillCommand {
+    param([string]$Root, [string]$SkillName, [string]$CommandText)
+    if ($CommandText -match '[;&|<>`]' -or $CommandText -notmatch '^npx\s+-y\s+skills\s+add\s+') {
+        throw "Approved install command for '$SkillName' is outside the safe allowlist."
+    }
+    $tokens = @($CommandText -split '\s+' | Where-Object { $_ })
+    if ($tokens.Count -lt 6 -or $tokens[0] -ne 'npx' -or $tokens[1] -ne '-y' -or $tokens[2] -ne 'skills' -or $tokens[3] -ne 'add') {
+        throw "Approved install command for '$SkillName' is malformed."
+    }
+    $arguments = @($tokens[1..($tokens.Count - 1)])
+    Write-InfoLine "INSTALLING: $SkillName"
+    Write-InfoLine "COMMAND: $CommandText"
+    Push-Location $Root
+    try {
+        & npx @arguments
+        if ($LASTEXITCODE -ne 0) { throw "Installation failed for '$SkillName' with exit code $LASTEXITCODE." }
+    } finally {
+        Pop-Location
+    }
 }
 
 switch ($Command) {

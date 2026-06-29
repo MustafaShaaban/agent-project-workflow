@@ -372,6 +372,56 @@ try {
             Write-Fail "Spec Kit available state failed: status=$($availableSpecLock.spec_kit.status)"
         }
     }
+
+    $questionRoot = Join-Path $cliBehaviorRoot 'question-engine'
+    New-Item -ItemType Directory -Path $questionRoot -Force | Out-Null
+    $questionOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        init -TargetPath $questionRoot -Type auto -DryRun 2>&1
+    $questionText = $questionOutput | Out-String
+    $questionFields = @('Detected:', 'Recommended:', 'Why:', 'Alternatives:', 'Impact:', 'Question:', 'Default if you approve:')
+    $missingQuestionFields = @($questionFields | Where-Object { $questionText -notmatch [regex]::Escape($_) })
+    if (($missingQuestionFields.Count -eq 0) -and -not (Test-Path (Join-Path $questionRoot 'AGENTS.md'))) {
+        Write-Pass 'unknown project type emits recommendation-first question without writing'
+    } else {
+        Write-Fail "unknown project question missing fields: $($missingQuestionFields -join ', ')"
+    }
+
+    $installRoot = Join-Path $cliBehaviorRoot 'install-skills'
+    $shimRoot = Join-Path $installRoot 'bin'
+    New-Item -ItemType Directory -Path $shimRoot -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $shimRoot 'npx.cmd') -Value '@echo installed>%CD%\installed.txt' -Encoding Ascii
+    [ordered]@{
+        version = '1.0'
+        install_mode = 'auto-approved-only'
+        skills = [ordered]@{
+            required = @(
+                [ordered]@{
+                    name = 'approved-skill'
+                    install_approved = $true
+                    install_command = 'npx -y skills add . --skill approved-skill --global --agent codex --copy'
+                }
+                [ordered]@{
+                    name = 'manual-skill'
+                    install_approved = $false
+                    install_command = 'npx -y skills add . --skill manual-skill --global --agent codex --copy'
+                }
+            )
+        }
+    } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $installRoot '.ai-skills.json') -Encoding UTF8
+    $oldPath = $env:PATH
+    try {
+        $env:PATH = "$shimRoot;$oldPath"
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+            install-skills -TargetPath $installRoot -ApprovedOnly 2>&1 | Out-Null
+    } finally {
+        $env:PATH = $oldPath
+    }
+    if ((Test-Path (Join-Path $installRoot 'installed.txt')) -and
+        -not (Test-Path (Join-Path $installRoot 'manual-installed.txt'))) {
+        Write-Pass 'install-skills executes only approved safe commands'
+    } else {
+        Write-Fail 'install-skills must execute approved safe commands'
+    }
 } catch {
     Write-Fail "CLI safety/archetype tests failed: $_"
 } finally {

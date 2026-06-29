@@ -21,3 +21,5 @@ Default if you approve:
 - High-risk: authentication, authorization, payments, user data, PII, security, database migration, deployment, CI/CD, production configuration, WooCommerce checkout/orders/payments/shipping/tax. Require Spec Kit and clarifying questions before implementation.
 
 Do not ask about facts the repo can answer.
+
+For an undetectable `init -Type auto`, the CLI does not guess or write files. It prints the full question structure and recommends rerunning with an explicit `-Type`.

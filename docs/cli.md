@@ -13,6 +13,8 @@
 
 `-DryRun` is the safe default for `init`. Files are written only when `-Apply` is passed.
 
+If `-Type auto` cannot detect a reliable type, `init` stops without writing and prints a recommendation-first question with detected state, recommendation, rationale, alternatives, impact, question, and default.
+
 ## Commands
 
 - `init`: configures workflow files in an existing project.
@@ -21,6 +23,7 @@
 - `doctor`: validates workflow files, managed blocks, lock file, skills, and automatic activation.
 - `upgrade`: refreshes managed blocks and lock metadata.
 - `install-skills`: prints approved install commands from `.ai-skills.json`.
+- `install-skills -ApprovedOnly`: executes only commands marked `install_approved: true` that match the safe `npx -y skills add ...` allowlist; unapproved or unsupported commands remain manual.
 
 ## Safety
 

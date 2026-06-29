@@ -16,11 +16,13 @@ All notable changes to this project are documented here.
 - Spec Kit initialization/preservation with integration-list attempt, availability fallback, multi-integration setup, and exact lock-file command/status recording.
 - Deterministic preset generation with `scripts/generate-presets.ps1`.
 - Expanded self-tests covering dry-run/apply, managed upgrades, no-overwrite proposals, lock files, automatic activation, archetypes, WooCommerce guards, presets, doctor JSON, and Spec Kit lifecycle.
+- Recommendation-first no-write handling when `-Type auto` cannot detect a project type.
+- Safe execution of approved-only `npx skills add` commands, with unapproved commands kept manual.
 - CLI, presets, bundles, WordPress preset, question engine, automatic activation, CI enforcement, and skills policy documentation.
 
 ### Verification
 
-- `scripts/test-workflow.ps1`: 90 passed, 4 expected warnings for unavailable PowerShell YAML parser modules, 0 failures.
+- `scripts/test-workflow.ps1`: 92 passed, 4 expected warnings for unavailable PowerShell YAML parser modules, 0 failures.
 - `git diff --check`: passed.
 - PR #5 and PR #6 merged into `master`.
 

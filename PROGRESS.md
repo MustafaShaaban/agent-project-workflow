@@ -2,12 +2,12 @@
 
 ## Current status
 
-- Status: v0.3.0 project-workflow initializer roadmap merged to `master`
+- Status: v0.3.0 project-workflow initializer roadmap implementation complete
 - Last updated: 2026-06-29
 
 ## Active branch
 
-- Branch: `docs/v0.3.0-release-state` (release-state documentation only)
+- Branch: `master` is the authoritative release branch; implementation branches are retained for audit history.
 
 ## Active spec
 
@@ -38,6 +38,13 @@
 - Added Spec Kit lifecycle handling: existing-state preservation, integration-list attempt, tool-availability fallback, first integration init, additional integration install, and lock-file command/status recording.
 - Added tests for unmanaged-file preservation, managed-block upgrade, five WordPress archetypes, audit archetypes, doctor JSON, missing WooCommerce guard, Spec Kit preservation/initialization, and complete preset payloads.
 - Verification run: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-workflow.ps1` passed with 90 pass, 4 expected YAML-parser warnings, 0 failures.
+
+### v0.3.0 final requirement fixes (2026-06-29)
+
+- Added recommendation-first no-write handling when `init -Type auto` cannot detect a reliable project type.
+- Added safe execution for approved-only `npx -y skills add` commands and retained manual handling for unapproved/unsupported commands.
+- Added tests for the full question format, no-write behavior, allowlisted execution, and unapproved-command exclusion.
+- Verification run: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-workflow.ps1` passed with 92 pass, 4 expected YAML-parser warnings, 0 failures.
 
 ### v0.2.0 (2026-06-28)
 
