@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here.
 
+## 0.3.0 - 2026-06-29
+
+### Added
+
+- PowerShell-first `project-workflow` command with `init`, `new`, `audit`, `doctor`, `upgrade`, and `install-skills`.
+- Safe dry-run/apply behavior, managed blocks, `.suggested.md` conflict proposals, and `.agent-workflow.lock.json`.
+- Automatic repo-local activation through generated `AGENTS.md`, `CLAUDE.md`, and `PROJECT-WORKING-GUIDE.md`.
+- Recommendation-first question and Tiny/Normal/High-risk task rules.
+- Full generic and WordPress preset payloads for site, plugin, theme, block, WooCommerce, and Bedrock archetypes.
+- Shared archetype detection and audit JSON reporting.
+- Doctor readiness scoring, JSON output, required-skill validation, and lock consistency checks.
+- Spec Kit initialization/preservation with integration-list attempt, availability fallback, multi-integration setup, and exact lock-file command/status recording.
+- Deterministic preset generation with `scripts/generate-presets.ps1`.
+- Expanded self-tests covering dry-run/apply, managed upgrades, no-overwrite proposals, lock files, automatic activation, archetypes, WooCommerce guards, presets, doctor JSON, and Spec Kit lifecycle.
+- CLI, presets, bundles, WordPress preset, question engine, automatic activation, CI enforcement, and skills policy documentation.
+
+### Verification
+
+- `scripts/test-workflow.ps1`: 90 passed, 4 expected warnings for unavailable PowerShell YAML parser modules, 0 failures.
+- `git diff --check`: passed.
+- PR #5 and PR #6 merged into `master`.
+
 ## 0.2.0 - 2026-06-28
 
 ### Added (Phase 1 — core workflow system)
