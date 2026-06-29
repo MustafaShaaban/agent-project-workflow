@@ -1,27 +1,21 @@
 # Progress
 
-## Current status
+## Done
 
-- Status: Not started
-- Last updated: YYYY-MM-DD
+- Project workflow initialized.
 
-## Active branch
+## In progress
 
-- Branch: `[branch-name]`
+- First project task is not selected yet.
 
-## Active spec
+## Next
 
-- Spec: None
-- Task IDs: None
+- Run `project-workflow doctor` and choose the first project outcome.
 
-## Recent work
-
-- Repository workflow initialized.
-
-## Next recommended step
-
-- Define the first project outcome and create or select its spec.
-
-## Open blockers
+## Open decisions
 
 - None.
+
+## Last session summary
+
+- Workflow files, lock file, and local instructions were generated.

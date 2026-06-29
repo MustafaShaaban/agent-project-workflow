@@ -1,12 +1,10 @@
 # Decisions
 
-Record durable owner, product, and architecture decisions. Do not record temporary implementation thoughts.
+## Decision log
 
-## Decision template
+### YYYY-MM-DD - Initial workflow defaults
 
-### YYYY-MM-DD - Decision title
-
-- **Decision:** What was decided.
-- **Reason:** Why this option was selected.
-- **Impact:** What changes or constraints follow.
-- **Revisit trigger:** The condition that should cause reconsideration.
+- **Decision:** Use the selected project type, archetype, profile, branching strategy, platform, detected CI, skills policy, Spec Kit status, and owner-chosen defaults recorded in `.agent-workflow.lock.json`.
+- **Reason:** Repo-local workflow defaults remove chat-history dependency and keep setup reproducible.
+- **Impact:** Agents follow automatic startup instructions and preserve user-owned sections during workflow upgrades.
+- **Revisit trigger:** Project type, branching model, CI provider, risk profile, or owner defaults change.

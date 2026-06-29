@@ -1,105 +1,96 @@
 {
   "version": "1.0",
-  "description": "Machine-readable skill configuration for AI agents in this project.",
+  "description": "Machine-readable skill policy for project-workflow managed repositories.",
   "install_mode": "ask",
   "skills": {
     "required": [
       {
         "name": "project-workflow",
-        "reason": "Universal project safety, branch guard, progress tracking, and handoff routine.",
+        "category": "workflow",
+        "reason": "Universal startup, branch safety, progress tracking, verification, and handoff routine.",
         "install_command": "npx -y skills add . --skill project-workflow --global --agent claude-code --agent codex --copy",
         "install_approved": true
+      },
+      {
+        "name": "clean-code-guard",
+        "category": "guard",
+        "reason": "Required for standard and strict professional projects.",
+        "install_command": null,
+        "install_approved": false
+      },
+      {
+        "name": "test-guard",
+        "category": "guard",
+        "reason": "Required for standard and strict professional projects.",
+        "install_command": null,
+        "install_approved": false
+      },
+      {
+        "name": "docs-guard",
+        "category": "guard",
+        "reason": "Required for standard and strict professional projects.",
+        "install_command": null,
+        "install_approved": false
       }
     ],
     "conditional_required": [
       {
         "name": "wp-guard",
+        "category": "guard",
         "condition": "wordpress_detected",
-        "reason": "WordPress-specific safety guard for core, plugins, and themes. Required whenever a WordPress project is detected.",
+        "reason": "Required for WordPress core, plugin, theme, block, and site safety.",
         "install_command": null,
-        "install_approved": false,
-        "detection_rules": [
-          "wp-config.php exists at project root",
-          "wp-content/ directory exists",
-          "wp-content/plugins/ exists",
-          "wp-content/themes/ exists",
-          "wp-login.php exists",
-          "style.css contains 'Theme Name:' header",
-          "composer.json contains 'roots/bedrock' or 'johnpbloch/wordpress'",
-          "package.json contains '@wordpress/' packages"
-        ]
+        "install_approved": false
+      },
+      {
+        "name": "woo-guard",
+        "category": "guard",
+        "condition": "woocommerce_detected",
+        "reason": "Required for WooCommerce checkout, orders, payments, shipping, and tax work.",
+        "install_command": null,
+        "install_approved": false
+      }
+    ],
+    "optional": [
+      {
+        "name": "wp-plugin-development",
+        "category": "build",
+        "reason": "Recommended when building or changing WordPress plugins.",
+        "install_command": null,
+        "install_approved": false
+      },
+      {
+        "name": "wp-block-development",
+        "category": "build",
+        "reason": "Recommended when building blocks or block editor integrations.",
+        "install_command": null,
+        "install_approved": false
+      },
+      {
+        "name": "wp-performance",
+        "category": "guard",
+        "reason": "Recommended for production WordPress performance work.",
+        "install_command": null,
+        "install_approved": false
+      },
+      {
+        "name": "wp-phpstan",
+        "category": "guard",
+        "reason": "Recommended when PHPStan is available in the WordPress project.",
+        "install_command": null,
+        "install_approved": false
+      },
+      {
+        "name": "wp-playground",
+        "category": "build",
+        "reason": "Recommended for browser-based WordPress smoke tests when useful.",
+        "install_command": null,
+        "install_approved": false
       }
     ]
   },
-  "detection": {
-    "platforms": {
-      "github": [
-        ".github/ directory exists",
-        ".github/workflows/ exists",
-        "remote URL contains github.com"
-      ],
-      "azure-devops": [
-        ".azure/ directory exists",
-        "azure-pipelines.yml exists",
-        "remote URL contains dev.azure.com or visualstudio.com"
-      ]
-    },
-    "project_types": {
-      "wordpress": [
-        "wp-config.php",
-        "wp-content/",
-        "wp-content/plugins/",
-        "wp-content/themes/",
-        "wp-login.php",
-        "wp-blog-header.php"
-      ],
-      "laravel": [
-        "artisan",
-        "app/Http/Kernel.php",
-        "composer.json with laravel/framework"
-      ],
-      "react": [
-        "package.json with react dependency"
-      ],
-      "vue": [
-        "package.json with vue dependency"
-      ],
-      "svelte": [
-        "package.json with svelte dependency",
-        "svelte.config.js"
-      ],
-      "laravel_wp": [
-        "artisan AND wp-content/"
-      ]
-    },
-    "ci": {
-      "github_actions": [
-        ".github/workflows/*.yml"
-      ],
-      "azure_pipelines": [
-        "azure-pipelines.yml",
-        ".azure/pipelines/*.yml"
-      ],
-      "other": [
-        "Jenkinsfile",
-        ".circleci/",
-        ".travis.yml",
-        "bitbucket-pipelines.yml"
-      ]
-    },
-    "branching": {
-      "git_flow": [
-        "develop branch exists",
-        "release/* branches exist"
-      ],
-      "trunk_based": [
-        "no develop branch",
-        "short-lived feature branches only"
-      ],
-      "github_flow": [
-        "feature branches from main",
-        "no develop branch"
-      ]
-    }
+  "install_rules": {
+    "approved_only": "Install or print only skills with install_approved=true and a documented install_command.",
+    "manual": "Unknown, missing, or unapproved commands must be shown as manual steps."
   }
 }
