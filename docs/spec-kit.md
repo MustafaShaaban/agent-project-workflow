@@ -8,6 +8,10 @@ The parts have distinct responsibilities:
 
 When Spec Kit is present, use it before implementation and reflect active paths and task IDs in `PROGRESS.md` and handoffs. When it is absent, ask before installing or initializing it. Do not silently change project tooling.
 
+The initializer records one of these lock states: `disabled`, `requested-unavailable`, `existing-preserved`, `available-dry-run`, `initialized`, or `available-no-matching-integration`.
+
+For new setup, it runs `specify integration list` first. Some Spec Kit versions require an initialized project for that command; in that case the initializer records the failed attempt, runs `specify check`, then uses the explicitly requested integration IDs. The first integration uses `specify init --here --force`; additional integrations use `specify integration install --force`.
+
 Check current integrations before assuming identifiers:
 
 ```powershell

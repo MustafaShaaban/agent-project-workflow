@@ -1,0 +1,17 @@
+﻿workflow:
+  version: "0.3.0"
+  profile: standard
+  archetype: wordpress-woocommerce
+  automatic_activation: true
+branching:
+  strategy: github-flow
+  production_branch: main
+spec_kit:
+  enabled: true
+  use_for_non_trivial_work: true
+skills:
+  install_mode: ask
+safety:
+  dry_run_default: true
+  managed_blocks: true
+  preserve_user_files: true

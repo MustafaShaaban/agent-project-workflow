@@ -13,6 +13,8 @@ This script validates:
 2. **JSON validity** — `templates/.ai-skills.json` and fixture `package.json` files
 3. **YAML basic sanity** — `.ai-workflow.yml` templates contain expected keys
 4. **Audit script on fixtures** — runs `audit-project-workflow.ps1 -OutputFormat Json`
+5. **CLI smoke and safety tests** — verifies dry-run/apply, lock files, managed-block upgrades, `.suggested.md` conflicts, doctor JSON, required skills, archetype detection, and Spec Kit lifecycle
+6. **Preset payload sanity** — verifies every generic/WordPress preset contains the complete template payload
    against each test fixture and verifies detected type and WordPress status
 5. **Bootstrap observe-only** — runs `bootstrap-project.ps1 -Mode observe-only` against
    a fixture to confirm no files are written

@@ -2,12 +2,12 @@
 
 ## Current status
 
-- Status: v0.3.0 CLI initializer MVP implemented locally; pending commit, push, PR, and merge
+- Status: v0.3.0 initializer completion slice implemented locally; pending commit, push, PR, and merge
 - Last updated: 2026-06-29
 
 ## Active branch
 
-- Branch: `pw-initializer-roadmap`
+- Branch: `pw-initializer-completion`
 
 ## Active spec
 
@@ -27,6 +27,17 @@
 - Updated `README.md`, `skills/project-workflow/SKILL.md`, and generated templates to describe the CLI, managed blocks, automatic activation, recommendation-first questions, and WordPress/WooCommerce safety rules.
 - Verification run: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-workflow.ps1` passed with 65 pass, 4 expected YAML-parser warnings, 0 failures.
 - Verification run: `git diff --check` passed with line-ending normalization warnings only.
+
+### v0.3.0 initializer completion slice (2026-06-29)
+
+- Added shared archetype detection for WordPress plugin, theme, block, site, Bedrock, and WooCommerce projects.
+- Added WooCommerce indicators and required `woo-guard` validation.
+- Added archetype data to audit JSON and structured doctor JSON output.
+- Added doctor validation for profile/archetype-required skills and lock-file consistency.
+- Added deterministic `scripts/generate-presets.ps1` and full template payloads for eight presets.
+- Added Spec Kit lifecycle handling: existing-state preservation, integration-list attempt, tool-availability fallback, first integration init, additional integration install, and lock-file command/status recording.
+- Added tests for unmanaged-file preservation, managed-block upgrade, five WordPress archetypes, audit archetypes, doctor JSON, missing WooCommerce guard, Spec Kit preservation/initialization, and complete preset payloads.
+- Verification run: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-workflow.ps1` passed with 90 pass, 4 expected YAML-parser warnings, 0 failures.
 
 ### v0.2.0 (2026-06-28)
 
@@ -65,8 +76,8 @@
 
 ## Next recommended step
 
-- Commit the v0.3.0 CLI initializer MVP.
-- Push `pw-initializer-roadmap`.
+- Commit the v0.3.0 initializer completion slice.
+- Push `pw-initializer-completion`.
 - Open/update a PR into `master`.
 - If checks and permissions allow, merge; otherwise leave the PR with exact blockers.
 

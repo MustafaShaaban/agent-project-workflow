@@ -252,8 +252,136 @@ try {
     }
 }
 
-# ─── 7. Template path sanity ──────────────────────────────────────────────
-Write-Section "7. Template Path Sanity"
+# ─── 7. CLI safety and archetype tests ────────────────────────────────────
+Write-Section "7. CLI Safety and Archetype Tests"
+
+$cliBehaviorRoot = Join-Path ([System.IO.Path]::GetTempPath()) "apw-cli-behavior-$([guid]::NewGuid().ToString('N'))"
+try {
+    New-Item -ItemType Directory -Path $cliBehaviorRoot -Force | Out-Null
+
+    $conflictRoot = Join-Path $cliBehaviorRoot 'conflict'
+    New-Item -ItemType Directory -Path $conflictRoot -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $conflictRoot 'AGENTS.md') -Value '# Owner instructions' -Encoding UTF8
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        init -TargetPath $conflictRoot -Type generic -Apply 2>&1 | Out-Null
+    $ownerText = Get-Content (Join-Path $conflictRoot 'AGENTS.md') -Raw
+    if (($ownerText -match 'Owner instructions') -and (Test-Path (Join-Path $conflictRoot 'AGENTS.md.suggested.md'))) {
+        Write-Pass 'init preserves unmanaged files and creates .suggested.md proposals'
+    } else {
+        Write-Fail 'init must preserve unmanaged files and create .suggested.md proposals'
+    }
+
+    $upgradeRoot = Join-Path $cliBehaviorRoot 'upgrade'
+    New-Item -ItemType Directory -Path $upgradeRoot -Force | Out-Null
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        init -TargetPath $upgradeRoot -Type generic -Apply 2>&1 | Out-Null
+    Add-Content -LiteralPath (Join-Path $upgradeRoot 'AGENTS.md') -Value "`nOwner upgrade note."
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        upgrade -TargetPath $upgradeRoot -Type generic -Apply 2>&1 | Out-Null
+    if ((Get-Content (Join-Path $upgradeRoot 'AGENTS.md') -Raw) -match 'Owner upgrade note') {
+        Write-Pass 'upgrade preserves content outside managed blocks'
+    } else {
+        Write-Fail 'upgrade must preserve content outside managed blocks'
+    }
+
+    $archetypes = @(
+        @{ name = 'wordpress-plugin'; file = 'sample-plugin.php'; content = "<?php`n/*`nPlugin Name: Sample`n*/" }
+        @{ name = 'wordpress-theme'; file = 'style.css'; content = "/*`nTheme Name: Sample`n*/" }
+        @{ name = 'wordpress-block'; file = 'block.json'; content = '{"apiVersion":3,"name":"sample/block"}' }
+        @{ name = 'wordpress-bedrock'; file = 'composer.json'; content = '{"require":{"roots/bedrock":"*"}}' }
+        @{ name = 'wordpress-woocommerce'; file = 'sample.php'; content = "<?php`n/* WooCommerce extension */`nWC_Order::class;" }
+    )
+    foreach ($case in $archetypes) {
+        $caseRoot = Join-Path $cliBehaviorRoot $case.name
+        New-Item -ItemType Directory -Path $caseRoot -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $caseRoot $case.file) -Value $case.content -Encoding UTF8
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+            init -TargetPath $caseRoot -Type auto -Apply 2>&1 | Out-Null
+        $caseLock = Get-Content (Join-Path $caseRoot '.agent-workflow.lock.json') -Raw | ConvertFrom-Json
+        if ($caseLock.archetype -eq $case.name) {
+            Write-Pass "auto detection: $($case.name)"
+        } else {
+            Write-Fail "auto detection: expected $($case.name), got $($caseLock.archetype)"
+        }
+        $caseAudit = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+            audit -TargetPath $caseRoot -Json 2>$null | ConvertFrom-Json
+        if ($caseAudit.archetype -eq $case.name) {
+            Write-Pass "audit archetype: $($case.name)"
+        } else {
+            Write-Fail "audit archetype: expected $($case.name), got $($caseAudit.archetype)"
+        }
+    }
+
+    $doctorJson = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        doctor -TargetPath $upgradeRoot -Json 2>$null | ConvertFrom-Json
+    if (($doctorJson.score -is [int]) -and $doctorJson.recommended_next) {
+        Write-Pass 'doctor JSON exposes score and recommended_next'
+    } else {
+        Write-Fail 'doctor JSON must expose score and recommended_next'
+    }
+
+    $wooRoot = Join-Path $cliBehaviorRoot 'wordpress-woocommerce'
+    $wooSkillsPath = Join-Path $wooRoot '.ai-skills.json'
+    $wooSkills = Get-Content $wooSkillsPath -Raw | ConvertFrom-Json
+    $wooSkills.skills.required = @($wooSkills.skills.required | Where-Object { $_.name -ne 'woo-guard' })
+    $wooSkills | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $wooSkillsPath -Encoding UTF8
+    $wooDoctor = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        doctor -TargetPath $wooRoot -Json 2>$null | ConvertFrom-Json
+    if (($wooDoctor.blocking -join ' ') -match 'woo-guard') {
+        Write-Pass 'doctor blocks WooCommerce projects missing woo-guard'
+    } else {
+        Write-Fail 'doctor must block WooCommerce projects missing woo-guard'
+    }
+
+    $existingSpecRoot = Join-Path $cliBehaviorRoot 'existing-spec-kit'
+    New-Item -ItemType Directory -Path (Join-Path $existingSpecRoot '.specify') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $existingSpecRoot '.specify\owner.txt') -Value 'preserve me'
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        init -TargetPath $existingSpecRoot -Type generic -SpecKit -Apply 2>&1 | Out-Null
+    $existingSpecLock = Get-Content (Join-Path $existingSpecRoot '.agent-workflow.lock.json') -Raw | ConvertFrom-Json
+    if (($existingSpecLock.spec_kit.status -eq 'existing-preserved') -and
+        ((Get-Content (Join-Path $existingSpecRoot '.specify\owner.txt') -Raw) -match 'preserve me')) {
+        Write-Pass 'Spec Kit init preserves existing .specify state'
+    } else {
+        Write-Fail 'Spec Kit init must preserve existing .specify state'
+    }
+
+    if (-not (Get-Command specify -ErrorAction SilentlyContinue)) {
+        $missingSpecRoot = Join-Path $cliBehaviorRoot 'missing-spec-kit'
+        New-Item -ItemType Directory -Path $missingSpecRoot -Force | Out-Null
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+            init -TargetPath $missingSpecRoot -Type generic -SpecKit -Apply 2>&1 | Out-Null
+        $missingSpecLock = Get-Content (Join-Path $missingSpecRoot '.agent-workflow.lock.json') -Raw | ConvertFrom-Json
+        if ($missingSpecLock.spec_kit.status -eq 'requested-unavailable') {
+            Write-Pass 'Spec Kit requested-unavailable state is recorded'
+        } else {
+            Write-Fail "Expected Spec Kit requested-unavailable, got $($missingSpecLock.spec_kit.status)"
+        }
+    } else {
+        $availableSpecRoot = Join-Path $cliBehaviorRoot 'available-spec-kit'
+        New-Item -ItemType Directory -Path $availableSpecRoot -Force | Out-Null
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+            init -TargetPath $availableSpecRoot -Type generic -SpecKit -Agents codex -Apply 2>&1 | Out-Null
+        $availableSpecLock = Get-Content (Join-Path $availableSpecRoot '.agent-workflow.lock.json') -Raw | ConvertFrom-Json
+        if ((Test-Path (Join-Path $availableSpecRoot '.specify')) -and
+            ($availableSpecLock.spec_kit.status -eq 'initialized') -and
+            (($availableSpecLock.spec_kit.commands -join ' ') -match 'integration list') -and
+            (($availableSpecLock.spec_kit.commands -join ' ') -match 'specify init')) {
+            Write-Pass 'Spec Kit available state initializes and records commands'
+        } else {
+            Write-Fail "Spec Kit available state failed: status=$($availableSpecLock.spec_kit.status)"
+        }
+    }
+} catch {
+    Write-Fail "CLI safety/archetype tests failed: $_"
+} finally {
+    if (Test-Path $cliBehaviorRoot) {
+        Remove-Item -LiteralPath $cliBehaviorRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# ─── 8. Template path sanity ──────────────────────────────────────────────
+Write-Section "8. Template Path Sanity"
 
 $expectedTemplates = @(
     'templates\.ai-workflow.yml'
@@ -276,8 +404,46 @@ foreach ($t in $expectedTemplates) {
     if (Test-Path $path) { Write-Pass $t } else { Write-Fail "$t not found" }
 }
 
-# ─── 8. Doc file sanity ────────────────────────────────────────────────────
-Write-Section "8. Documentation File Sanity"
+# ─── 9. Preset payload sanity ──────────────────────────────────────────────
+Write-Section "9. Preset Payload Sanity"
+
+$presetNames = @(
+    'generic',
+    'wordpress',
+    'wordpress-site',
+    'wordpress-plugin',
+    'wordpress-theme',
+    'wordpress-block',
+    'wordpress-woocommerce',
+    'wordpress-bedrock'
+)
+$presetFiles = @(
+    '.ai-workflow.yml',
+    '.ai-skills.json',
+    'AGENTS.md',
+    'CLAUDE.md',
+    'PROJECT-WORKING-GUIDE.md',
+    'PROGRESS.md',
+    'DECISIONS.md',
+    'specs\constitution.md',
+    'README.md'
+)
+foreach ($preset in $presetNames) {
+    $missingPresetFiles = @()
+    foreach ($presetFile in $presetFiles) {
+        if (-not (Test-Path (Join-Path $repoRoot "presets\$preset\$presetFile"))) {
+            $missingPresetFiles += $presetFile
+        }
+    }
+    if ($missingPresetFiles.Count -eq 0) {
+        Write-Pass "preset/$preset has full payload"
+    } else {
+        Write-Fail "preset/$preset missing: $($missingPresetFiles -join ', ')"
+    }
+}
+
+# ─── 10. Doc file sanity ───────────────────────────────────────────────────
+Write-Section "10. Documentation File Sanity"
 
 $expectedDocs = @(
     'docs\install.md'
@@ -311,8 +477,8 @@ foreach ($d in $expectedDocs) {
     if (Test-Path $path) { Write-Pass $d } else { Write-Fail "$d not found" }
 }
 
-# ─── 9. Format / line-count sanity ────────────────────────────────────────
-Write-Section "9. Format / Line-Count Sanity"
+# ─── 11. Format / line-count sanity ───────────────────────────────────────
+Write-Section "11. Format / Line-Count Sanity"
 
 # Guards against files being collapsed into a handful of very long lines
 # (e.g. real newlines stripped during a bad merge or copy/paste).
