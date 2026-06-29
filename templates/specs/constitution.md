@@ -1,30 +1,39 @@
 # Project Constitution
 
-## Quality principles
+<!-- agent-project-workflow:start -->
+## Generic workflow principles
 
-- Prefer clear, maintainable solutions that meet documented requirements.
-- Keep changes scoped, reviewable, and reversible where practical.
-- Preserve security, privacy, accessibility, and operational safety appropriate to the project.
+- Source-of-truth hierarchy: latest owner instruction, repository instructions, constitution, active specs, progress/decisions, docs, implementation code.
+- Use one real Git root.
+- Preserve user work.
+- Use Spec Kit before code for non-trivial work.
+- Run tests and guards before completion.
+- Keep docs synchronized with code.
+- Protect secrets and never expose credentials.
+- Do not edit generated/vendor/build/cache/upload outputs as source.
+- End with verification, recommended options, and mandatory `NEXT STEP`.
+- Ask recommendation-first questions only when detection cannot answer safely.
 
-## Source of truth
+## WordPress principles
 
-Resolve conflicts in this order: latest explicit owner instruction; repository agent instructions; this constitution; active specs; progress and decision records; README and docs; implementation code.
+- Never edit WordPress core.
+- Never treat uploads, cache, vendor, or build output as source.
+- Use WordPress APIs.
+- Sanitize input and escape output.
+- Use nonces for state-changing requests.
+- Use capabilities for authorization.
+- Prepare database queries.
+- Keep strings translation-ready.
+- Keep business logic out of themes unless the selected project is theme-only and presentation-only.
+- Plugin work belongs in plugin mode; theme work belongs in theme mode; block work belongs in block mode.
+- WooCommerce checkout, order, payment, shipping, and tax work requires WooCommerce mode and `woo-guard`.
+- Load frontend, admin, and block assets conditionally.
+- Avoid global asset bloat and prefer progressive enhancement.
+- Respect WordPress coding standards where applicable.
+- Add tests where the repository supports tests.
+- Use Spec Kit for non-trivial WordPress work.
+<!-- agent-project-workflow:end -->
 
-## Testing expectations
+## Project-specific notes
 
-- Discover supported commands from project documentation and manifests.
-- Run focused tests during development and broader checks before completion.
-- Add or update tests when behavior changes.
-- Report checks that could not run and the remaining risk.
-
-## Documentation expectations
-
-Keep user-facing, operational, architectural, progress, and decision documentation synchronized with meaningful changes. Do not use durable files as a scratchpad.
-
-## Agent workflow
-
-- Work from the real Git root and inspect status, branch, remotes, and worktrees first.
-- Use no hidden worktree without explicit owner approval.
-- Preserve user changes and use safe branches.
-- Follow Spec Kit-first planning when Spec Kit is present; ask before initialization when absent.
-- End work with verification evidence, blockers, recommended options, and a concrete next step.
+Add project-specific constitutional constraints here. This section is preserved during workflow upgrades.

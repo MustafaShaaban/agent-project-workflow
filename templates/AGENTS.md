@@ -1,33 +1,46 @@
 # Agent Instructions
 
-## Project purpose
+<!-- agent-project-workflow:start -->
+## Automatic activation
 
-`[Describe the project's purpose, users, and primary outcomes.]`
+For every project request, even if the user does not mention `project-workflow`, automatically follow the project-workflow startup sequence before planning, editing, writing code, changing docs, running commands, committing, pushing, or merging.
 
-## First read
+Startup sequence:
 
-Before editing, read `AGENTS.md`, `CLAUDE.md`, `README.md`, `PROJECT-WORKING-GUIDE.md`, `PROGRESS.md`, `DECISIONS.md`, `specs/constitution.md`, and the active spec files that exist.
+1. Resolve the real Git root with `git rev-parse --show-toplevel`.
+2. Confirm the current directory is the root or move to the root.
+3. Check `git status --short --branch`.
+4. Check the current branch.
+5. Check remotes.
+6. Check worktrees.
+7. Detect platform.
+8. Detect CI/CD.
+9. Detect project type/archetype.
+10. Read `.ai-workflow.yml`.
+11. Read `.ai-skills.json`.
+12. Read `.agent-workflow.lock.json` if present.
+13. Read `AGENTS.md`.
+14. Read `CLAUDE.md` if present.
+15. Read `PROJECT-WORKING-GUIDE.md`.
+16. Read `PROGRESS.md`.
+17. Read `DECISIONS.md`.
+18. Read `specs/constitution.md` or `.specify/memory/constitution.md`.
+19. Read the active spec if present.
+20. State detected mode and recommended next step before implementation.
 
-## Workspace safety
+## Safety
 
-- Resolve the real root with `git rev-parse --show-toplevel` and work only there.
-- Review status, branch, remotes, and `git worktree list` before changing files.
-- Do not create or use hidden worktrees such as `.worktrees/` without explicit owner approval for the session.
-- Stop if the directory, checkout, or worktree is unexpected.
+- Work from the real Git root only.
+- Do not create hidden worktrees without explicit owner approval.
+- Preserve user changes and never rewrite history.
+- Do not implement on `main` or `master` unless the owner explicitly approves it.
+- Do not edit generated, vendor, build, cache, or upload directories unless explicitly required.
+- Use Spec Kit for non-trivial, multi-file, security, API, database, CI/CD, WordPress production, and WooCommerce work.
+- Ask recommendation-first questions only when repo inspection cannot answer safely.
+- Keep `PROGRESS.md` and `DECISIONS.md` current.
+- End with verification, recommended options, and mandatory `NEXT STEP`.
+<!-- agent-project-workflow:end -->
 
-## Branch and change safety
+## Project-specific notes
 
-- Do not implement on `main` or `master` except for initial repository creation or explicit owner approval.
-- Use a named branch for feature and fix work.
-- Never discard, overwrite, or hide user changes.
-
-## Planning and memory
-
-- Use Spec Kit-first planning when the repository has adopted Spec Kit.
-- Ask before installing or initializing Spec Kit.
-- Record meaningful progress in `PROGRESS.md`.
-- Record durable owner and architecture decisions in `DECISIONS.md`; do not log temporary thoughts as decisions.
-
-## Verification and handoff
-
-Discover and run the project's relevant tests and guards. Run focused checks first and broader checks before completion. End real work with the full handoff format documented in `PROJECT-WORKING-GUIDE.md`; always include a `NEXT STEP` with the recommended action, rationale, alternatives, and blockers.
+Add team/project notes here. This section is preserved during workflow upgrades.

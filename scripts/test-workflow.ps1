@@ -191,8 +191,69 @@ try {
     Write-Fail "bootstrap observe-only failed: $_"
 }
 
-# ─── 6. Template path sanity ──────────────────────────────────────────────
-Write-Section "6. Template Path Sanity"
+# ─── 6. Project Workflow CLI smoke tests ──────────────────────────────────
+Write-Section "6. Project Workflow CLI Smoke Tests"
+
+$cliScript = Join-Path $repoRoot 'scripts\project-workflow.ps1'
+$cliSmokeRoot = Join-Path ([System.IO.Path]::GetTempPath()) "apw-cli-smoke-$([guid]::NewGuid().ToString('N'))"
+try {
+    if (Test-Path $cliScript) {
+        Write-Pass 'scripts\project-workflow.ps1 exists'
+    } else {
+        Write-Fail 'scripts\project-workflow.ps1 not found'
+    }
+
+    New-Item -ItemType Directory -Path $cliSmokeRoot -Force | Out-Null
+    Push-Location $cliSmokeRoot
+    git init 2>$null | Out-Null
+    Pop-Location
+
+    if (Test-Path $cliScript) {
+        $dryRunOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+            init -TargetPath $cliSmokeRoot -Type wordpress-site -Profile standard -SpecKit `
+            -Agents codex,claude-code -DryRun 2>&1
+        if (($dryRunOutput -match 'DRY-RUN') -and -not (Test-Path (Join-Path $cliSmokeRoot 'AGENTS.md'))) {
+            Write-Pass 'init dry-run reports safely without writing AGENTS.md'
+        } else {
+            Write-Fail 'init dry-run must report DRY-RUN and avoid writing workflow files'
+        }
+
+        $applyOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+            init -TargetPath $cliSmokeRoot -Type wordpress-site -Profile standard -SpecKit `
+            -Agents codex,claude-code -Apply 2>&1
+        $lockPath = Join-Path $cliSmokeRoot '.agent-workflow.lock.json'
+        $agentsPath = Join-Path $cliSmokeRoot 'AGENTS.md'
+        if ((Test-Path $lockPath) -and (Test-Path $agentsPath)) {
+            $lock = Get-Content $lockPath -Raw | ConvertFrom-Json
+            $agentsText = Get-Content $agentsPath -Raw
+            if (($lock.archetype -eq 'wordpress-site') -and ($lock.spec_kit.enabled -eq $true) -and
+                ($agentsText -match 'automatically follow the project-workflow startup sequence')) {
+                Write-Pass 'init apply creates lock file and automatic activation instructions'
+            } else {
+                Write-Fail 'init apply created files but lock/automatic activation content is incomplete'
+            }
+        } else {
+            Write-Fail 'init apply must create AGENTS.md and .agent-workflow.lock.json'
+        }
+
+        $doctorOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+            doctor -TargetPath $cliSmokeRoot 2>&1
+        if (($doctorOutput -match 'Workflow readiness:') -and ($doctorOutput -match 'Recommended next:')) {
+            Write-Pass 'doctor reports readiness score and recommended next step'
+        } else {
+            Write-Fail 'doctor output must include readiness score and recommended next step'
+        }
+    }
+} catch {
+    Write-Fail "project-workflow CLI smoke failed: $_"
+} finally {
+    if (Test-Path $cliSmokeRoot) {
+        Remove-Item -LiteralPath $cliSmokeRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# ─── 7. Template path sanity ──────────────────────────────────────────────
+Write-Section "7. Template Path Sanity"
 
 $expectedTemplates = @(
     'templates\.ai-workflow.yml'
@@ -215,8 +276,8 @@ foreach ($t in $expectedTemplates) {
     if (Test-Path $path) { Write-Pass $t } else { Write-Fail "$t not found" }
 }
 
-# ─── 7. Doc file sanity ────────────────────────────────────────────────────
-Write-Section "7. Documentation File Sanity"
+# ─── 8. Doc file sanity ────────────────────────────────────────────────────
+Write-Section "8. Documentation File Sanity"
 
 $expectedDocs = @(
     'docs\install.md'
@@ -236,14 +297,22 @@ $expectedDocs = @(
     'docs\compatibility.md'
     'docs\upgrade.md'
     'docs\testing.md'
+    'docs\cli.md'
+    'docs\presets.md'
+    'docs\bundles.md'
+    'docs\wordpress-preset.md'
+    'docs\question-engine.md'
+    'docs\automatic-activation.md'
+    'docs\ci-enforcement.md'
+    'docs\skills-policy.md'
 )
 foreach ($d in $expectedDocs) {
     $path = Join-Path $repoRoot $d
-    if (Test-Path $path) { Write-Pass $d } else { Write-Warn "$d not found (may not be created yet)" }
+    if (Test-Path $path) { Write-Pass $d } else { Write-Fail "$d not found" }
 }
 
-# ─── 8. Format / line-count sanity ────────────────────────────────────────
-Write-Section "8. Format / Line-Count Sanity"
+# ─── 9. Format / line-count sanity ────────────────────────────────────────
+Write-Section "9. Format / Line-Count Sanity"
 
 # Guards against files being collapsed into a handful of very long lines
 # (e.g. real newlines stripped during a bad merge or copy/paste).

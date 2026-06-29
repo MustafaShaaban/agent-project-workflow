@@ -11,6 +11,34 @@ and leave durable state plus a clear structured handoff.
 
 ---
 
+## CLI initializer
+
+This repository ships a PowerShell-first MVP command:
+
+```powershell
+.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -DryRun
+.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -Apply
+.\scripts\project-workflow.ps1 audit
+.\scripts\project-workflow.ps1 doctor
+.\scripts\project-workflow.ps1 upgrade -Apply
+.\scripts\project-workflow.ps1 install-skills -ApprovedOnly
+```
+
+Use `init` for existing repositories and `new` for new project starters. `-DryRun`
+is the safe default; write files only with `-Apply`. Existing user files are not
+overwritten silently. Workflow-owned content uses:
+
+```markdown
+<!-- agent-project-workflow:start -->
+<!-- agent-project-workflow:end -->
+```
+
+When initialized, generated `AGENTS.md`, `CLAUDE.md`, and
+`PROJECT-WORKING-GUIDE.md` instruct supported agents to automatically follow the
+project-workflow startup sequence even when the owner does not mention this skill.
+
+---
+
 ## 0. Load project config
 
 At the very start of every session, before any other step:

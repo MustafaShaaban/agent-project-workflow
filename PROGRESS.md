@@ -2,12 +2,12 @@
 
 ## Current status
 
-- Status: v0.2.0 implementation complete; pending PR review and merge
-- Last updated: 2026-06-28
+- Status: v0.3.0 CLI initializer MVP implemented locally; pending commit, push, PR, and merge
+- Last updated: 2026-06-29
 
 ## Active branch
 
-- Branch: `feature/v2-workflow-system`
+- Branch: `pw-initializer-roadmap`
 
 ## Active spec
 
@@ -15,6 +15,18 @@
 - Task IDs: None
 
 ## Recent work
+
+### v0.3.0 CLI initializer MVP (2026-06-29)
+
+- Added `scripts/project-workflow.ps1` with `init`, `new`, `audit`, `doctor`, `upgrade`, and `install-skills` command routing.
+- Implemented safe `init` behavior: `-DryRun` default, `-Apply` required for writes, managed blocks, `.suggested.md` conflict proposals, user-owned progress/decision preservation, and `.agent-workflow.lock.json` creation.
+- Added WordPress-first archetype/profile handling, Spec Kit requested-state recording, skill policy generation, and automatic activation instructions.
+- Added CLI smoke coverage to `scripts/test-workflow.ps1` for dry-run, apply, lock file, automatic activation, and doctor readiness output.
+- Added required docs: `docs/cli.md`, `docs/presets.md`, `docs/bundles.md`, `docs/wordpress-preset.md`, `docs/question-engine.md`, `docs/automatic-activation.md`, `docs/ci-enforcement.md`, and `docs/skills-policy.md`.
+- Added preset structure under `presets/` for generic and WordPress archetypes.
+- Updated `README.md`, `skills/project-workflow/SKILL.md`, and generated templates to describe the CLI, managed blocks, automatic activation, recommendation-first questions, and WordPress/WooCommerce safety rules.
+- Verification run: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-workflow.ps1` passed with 65 pass, 4 expected YAML-parser warnings, 0 failures.
+- Verification run: `git diff --check` passed with line-ending normalization warnings only.
 
 ### v0.2.0 (2026-06-28)
 
@@ -53,10 +65,10 @@
 
 ## Next recommended step
 
-- Review PR on GitHub
-- Merge feature/v2-workflow-system into master
-- Tag release v0.2.0
-- Re-install global skill: `.\scripts\install-global.ps1`
+- Commit the v0.3.0 CLI initializer MVP.
+- Push `pw-initializer-roadmap`.
+- Open/update a PR into `master`.
+- If checks and permissions allow, merge; otherwise leave the PR with exact blockers.
 
 ## Open blockers
 

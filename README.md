@@ -43,29 +43,41 @@ npx -y skills add . --skill project-workflow --global --agent claude-code --agen
 
 ## Quick usage
 
-In Claude Code or Codex:
-
-```text
-Use project-workflow and start safely in this repo.
-```
-
-To bootstrap a new project with workflow files:
+Initialize an existing WordPress project safely:
 
 ```powershell
-.\scripts\bootstrap-project.ps1 -TargetPath C:\path\to\project
+.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -DryRun
+.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -Apply
 ```
 
-To audit an existing project without modifying it:
+After `init -Apply`, supported agents follow the repo-local workflow automatically from `AGENTS.md`, `CLAUDE.md`, and `PROJECT-WORKING-GUIDE.md`; you should not need to repeat "use project-workflow" in normal work.
+
+Create a new project starter:
 
 ```powershell
-.\scripts\audit-project-workflow.ps1 -TargetPath C:\path\to\project
+.\scripts\project-workflow.ps1 new -ProjectName my-wordpress-site -Type wordpress-site -Profile standard -SpecKit
 ```
 
-To validate Git Flow branch state:
+Audit and validate an existing project:
 
 ```powershell
-.\scripts\guard-git-flow.ps1 -ProjectPath C:\path\to\project
+.\scripts\project-workflow.ps1 audit
+.\scripts\project-workflow.ps1 doctor
 ```
+
+Upgrade managed workflow blocks:
+
+```powershell
+.\scripts\project-workflow.ps1 upgrade -Apply
+```
+
+Install only approved skills:
+
+```powershell
+.\scripts\project-workflow.ps1 install-skills -ApprovedOnly
+```
+
+The older scripts remain available for focused checks, but `scripts/project-workflow.ps1` is the primary command surface.
 
 ## Project config
 
@@ -141,6 +153,8 @@ If WordPress indicators are detected, the `wp-guard` companion skill is required
 `project-workflow` is the universal orchestrator; `wp-guard` handles
 WordPress-specific safety rules (core protection, plugin/theme safety, etc.).
 
+WordPress presets include site, plugin, theme, block, Bedrock, and WooCommerce-oriented modes. WooCommerce work requires `woo-guard` and treats checkout, orders, payments, shipping, tax, customer data, and PII as high-risk work that requires Spec Kit before implementation.
+
 See [docs/wordpress.md](docs/wordpress.md).
 
 ## Guard scripts
@@ -180,12 +194,20 @@ See [docs/wordpress.md](docs/wordpress.md).
 | Doc | Purpose |
 |-----|---------|
 | [docs/install.md](docs/install.md) | Installation and removal |
+| [docs/cli.md](docs/cli.md) | First-class command usage |
 | [docs/usage.md](docs/usage.md) | Example prompts and usage patterns |
+| [docs/presets.md](docs/presets.md) | Preset structure and archetypes |
+| [docs/bundles.md](docs/bundles.md) | Bundle shortcuts |
 | [docs/profiles.md](docs/profiles.md) | Workflow profile reference |
 | [docs/git-flow.md](docs/git-flow.md) | Git Flow configuration and rules |
 | [docs/existing-projects.md](docs/existing-projects.md) | observe-only, safe-bootstrap, strict-migration |
 | [docs/project-bootstrap.md](docs/project-bootstrap.md) | Bootstrapping new and existing projects |
 | [docs/wordpress.md](docs/wordpress.md) | WordPress detection and wp-guard |
+| [docs/wordpress-preset.md](docs/wordpress-preset.md) | WordPress preset rules |
+| [docs/question-engine.md](docs/question-engine.md) | Recommendation-first questions |
+| [docs/automatic-activation.md](docs/automatic-activation.md) | Repo-local automatic startup |
+| [docs/ci-enforcement.md](docs/ci-enforcement.md) | CI workflow enforcement |
+| [docs/skills-policy.md](docs/skills-policy.md) | Skill install and guard policy |
 | [docs/github.md](docs/github.md) | GitHub platform guidance |
 | [docs/azure-devops.md](docs/azure-devops.md) | Azure DevOps platform guidance |
 | [docs/generic-git.md](docs/generic-git.md) | Generic Git guidance |
