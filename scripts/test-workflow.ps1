@@ -6,8 +6,11 @@
 .DESCRIPTION
     Tests:
     - PowerShell script syntax for all scripts
-    - JSON validity for .ai-skills.json template
-    - YAML sanity for .ai-workflow.yml template
+    - JSON validity for .ai-skills.json template (parsed with ConvertFrom-Json)
+    - YAML validity for .ai-workflow.yml template (parsed with a real YAML parser
+      if one is installed; WARN — never PASS — when no parser is available)
+    - Format / line-count sanity so README.md and templates are rejected if
+      collapsed into a handful of very long lines
     - Audit script against all test fixtures
     - Guard script syntax (already covered by PS parser)
     - Bootstrap observe-only mode against a fixture
@@ -66,8 +69,22 @@ foreach ($rel in $jsonFiles) {
     }
 }
 
-# ─── 3. YAML basic sanity ──────────────────────────────────────────────────
-Write-Section "3. YAML Template Sanity"
+# ─── 3. YAML validity ──────────────────────────────────────────────────────
+Write-Section "3. YAML Template Validity"
+
+# Try to find a real YAML parser. We only claim PASS when one exists.
+$yamlParser = $null
+if (Get-Module -ListAvailable -Name 'powershell-yaml' -ErrorAction SilentlyContinue) {
+    try { Import-Module powershell-yaml -ErrorAction Stop; $yamlParser = 'powershell-yaml' } catch { }
+}
+if (-not $yamlParser -and (Get-Module -ListAvailable -Name 'PSYaml' -ErrorAction SilentlyContinue)) {
+    try { Import-Module PSYaml -ErrorAction Stop; $yamlParser = 'PSYaml' } catch { }
+}
+if ($yamlParser) {
+    Write-Info "Using YAML parser: $yamlParser"
+} else {
+    Write-Info "No YAML parser module installed (powershell-yaml / PSYaml). YAML files reported as WARN, not PASS."
+}
 
 $yamlFiles = @(
     'templates\.ai-workflow.yml'
@@ -79,11 +96,20 @@ foreach ($rel in $yamlFiles) {
     $path = Join-Path $repoRoot $rel
     if (-not (Test-Path $path)) { Write-Warn "$rel not found"; continue }
     $content = Get-Content $path -Raw
-    # Basic sanity: contains 'profile:' or 'project:' key
-    if ($content -match 'profile:|project:') {
-        Write-Pass "$rel (contains expected YAML keys)"
+    if ($yamlParser) {
+        try {
+            $null = ConvertFrom-Yaml $content
+            Write-Pass "$rel (parsed with $yamlParser)"
+        } catch {
+            Write-Fail "$rel`: YAML parse error - $($_.Exception.Message)"
+        }
     } else {
-        Write-Warn "$rel does not contain expected keys (profile: or project:)"
+        # No real parser available: do a structural smoke check but only WARN.
+        if ($content -match '(?m)^\s*(profile|project)\s*:') {
+            Write-Warn "$rel`: no YAML parser installed - structural check only, not validated (install powershell-yaml for real parsing)"
+        } else {
+            Write-Fail "$rel`: missing expected top-level keys (profile: / project:)"
+        }
     }
 }
 
@@ -185,6 +211,32 @@ $expectedDocs = @(
 foreach ($d in $expectedDocs) {
     $path = Join-Path $repoRoot $d
     if (Test-Path $path) { Write-Pass $d } else { Write-Warn "$d not found (may not be created yet)" }
+}
+
+# ─── 8. Format / line-count sanity ────────────────────────────────────────
+Write-Section "8. Format / Line-Count Sanity"
+
+# Guards against files being collapsed into a handful of very long lines
+# (e.g. real newlines stripped during a bad merge or copy/paste).
+$formatChecks = @(
+    @{ rel = 'README.md';                  minLines = 40 }
+    @{ rel = 'templates\.ai-workflow.yml'; minLines = 20 }
+    @{ rel = 'templates\.ai-skills.json';  minLines = 20 }
+)
+foreach ($fc in $formatChecks) {
+    $path = Join-Path $repoRoot $fc.rel
+    if (-not (Test-Path $path)) { Write-Fail "$($fc.rel) not found"; continue }
+    $lines  = @(Get-Content $path)
+    $count  = $lines.Count
+    $maxLen = ($lines | Measure-Object -Property Length -Maximum).Maximum
+    if (-not $maxLen) { $maxLen = 0 }
+    if ($count -lt $fc.minLines) {
+        Write-Fail "$($fc.rel): only $count line(s), expected >= $($fc.minLines) - looks collapsed"
+    } elseif ($count -le 10 -and $maxLen -gt 200) {
+        Write-Fail "$($fc.rel): $count line(s) with a $maxLen-char line - looks collapsed"
+    } else {
+        Write-Pass "$($fc.rel): $count lines, longest $maxLen chars"
+    }
 }
 
 # ─── Result ────────────────────────────────────────────────────────────────
