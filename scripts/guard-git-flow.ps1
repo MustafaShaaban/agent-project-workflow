@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     Validates Git Flow branch rules for AI agent safety.
@@ -11,29 +11,42 @@
 .PARAMETER ProjectPath
     Path to the project root. Defaults to current directory.
 
+.PARAMETER OutputFormat
+    Text (default) for human-readable output, or Json for machine-readable output.
+    Json emits: status, project_root, platform, project_type, current_branch,
+    profile, branching_strategy, risks, failures, warnings, recommended_next_step.
+
 .EXAMPLE
     .\guard-git-flow.ps1
     .\guard-git-flow.ps1 -ProjectPath C:\path\to\project
+    .\guard-git-flow.ps1 -ProjectPath C:\path\to\project -OutputFormat Json
 #>
 [CmdletBinding()]
 param(
-    [string]$ProjectPath = (Get-Location).Path
+    [string]$ProjectPath = (Get-Location).Path,
+    [ValidateSet('Text', 'Json')]
+    [string]$OutputFormat = 'Text'
 )
 
 $ErrorActionPreference = 'Stop'
+$jsonMode = $OutputFormat -eq 'Json'
 $root = [System.IO.Path]::GetFullPath($ProjectPath)
 $failures = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()
 
-function Write-Pass { param([string]$Msg) Write-Host "  [PASS] $Msg" -ForegroundColor Green }
-function Write-Fail { param([string]$Msg) Write-Host "  [FAIL] $Msg" -ForegroundColor Red; $script:failures.Add($Msg) }
-function Write-Warn { param([string]$Msg) Write-Host "  [WARN] $Msg" -ForegroundColor Yellow; $script:warnings.Add($Msg) }
-function Write-Info { param([string]$Msg) Write-Host "  [INFO] $Msg" -ForegroundColor Gray }
+# Shared detection helpers (platform / project type for JSON output).
+. (Join-Path $PSScriptRoot 'lib\WorkflowDetection.ps1')
 
-Write-Host "`n====================================" -ForegroundColor Cyan
-Write-Host " Git Flow / Branch Guard" -ForegroundColor Cyan
-Write-Host " Project: $root" -ForegroundColor Cyan
-Write-Host "====================================" -ForegroundColor Cyan
+function Write-Pass { param([string]$Msg) if (-not $script:jsonMode) { Write-Host "  [PASS] $Msg" -ForegroundColor Green } }
+function Write-Fail { param([string]$Msg) if (-not $script:jsonMode) { Write-Host "  [FAIL] $Msg" -ForegroundColor Red }; $script:failures.Add($Msg) }
+function Write-Warn { param([string]$Msg) if (-not $script:jsonMode) { Write-Host "  [WARN] $Msg" -ForegroundColor Yellow }; $script:warnings.Add($Msg) }
+function Write-Info { param([string]$Msg) if (-not $script:jsonMode) { Write-Host "  [INFO] $Msg" -ForegroundColor Gray } }
+function Write-Head { param([string]$Msg) if (-not $script:jsonMode) { Write-Host $Msg -ForegroundColor Cyan } }
+
+Write-Head "`n===================================="
+Write-Head " Git Flow / Branch Guard"
+Write-Head " Project: $root"
+Write-Head "===================================="
 
 # ─── Read .ai-workflow.yml ─────────────────────────────────────────────────
 $configPath = Join-Path $root '.ai-workflow.yml'
@@ -68,11 +81,27 @@ if (Test-Path $configPath) {
 }
 
 # ─── Git checks ────────────────────────────────────────────────────────────
-Write-Host "`n--- Git State ---" -ForegroundColor Cyan
+Write-Head "`n--- Git State ---"
 
 if (-not (Test-Path (Join-Path $root '.git'))) {
     Write-Fail "Not a Git repository"
-    Write-Host "`n[RESULT] BLOCKED - Not a Git repository" -ForegroundColor Red
+    if ($jsonMode) {
+        [ordered]@{
+            status                = 'blocked'
+            project_root          = $root
+            platform              = 'unknown'
+            project_type          = 'unknown'
+            current_branch        = ''
+            profile               = $profile
+            branching_strategy    = $strategy
+            risks                 = @('Not a Git repository')
+            failures              = $failures.ToArray()
+            warnings              = $warnings.ToArray()
+            recommended_next_step = 'Initialize a Git repository before running branch guards.'
+        } | ConvertTo-Json -Depth 5
+    } else {
+        Write-Host "`n[RESULT] BLOCKED - Not a Git repository" -ForegroundColor Red
+    }
     exit 1
 }
 
@@ -89,8 +118,12 @@ try {
 }
 Pop-Location
 
+# Detect platform and project type for machine-readable output.
+$platform = Get-WfPlatform -ProjectRoot $root
+$projectType = Get-WfProjectType -ProjectRoot $root
+
 # ─── Production branch guard ───────────────────────────────────────────────
-Write-Host "`n--- Production Branch Guard ---" -ForegroundColor Cyan
+Write-Head "`n--- Production Branch Guard ---"
 
 if ($currentBranch -eq $productionBranch) {
     if ($neverImplementOnProduction) {
@@ -103,7 +136,7 @@ if ($currentBranch -eq $productionBranch) {
 }
 
 # ─── Integration branch guard (Git Flow only) ──────────────────────────────
-Write-Host "`n--- Integration Branch Guard ---" -ForegroundColor Cyan
+Write-Head "`n--- Integration Branch Guard ---"
 
 if ($strategy -eq 'git-flow') {
     if ($currentBranch -eq $integrationBranch) {
@@ -120,7 +153,7 @@ if ($strategy -eq 'git-flow') {
 }
 
 # ─── Develop branch existence (Git Flow only) ──────────────────────────────
-Write-Host "`n--- Develop Branch Existence ---" -ForegroundColor Cyan
+Write-Head "`n--- Develop Branch Existence ---"
 
 if ($strategy -eq 'git-flow') {
     if ($allBranches -match "\b$integrationBranch\b") {
@@ -133,7 +166,7 @@ if ($strategy -eq 'git-flow') {
 }
 
 # ─── Branch naming ─────────────────────────────────────────────────────────
-Write-Host "`n--- Branch Naming ---" -ForegroundColor Cyan
+Write-Head "`n--- Branch Naming ---"
 
 $protectedBranches = @($productionBranch, 'master', 'main', 'trunk', $integrationBranch) | Select-Object -Unique
 
@@ -160,7 +193,7 @@ if ($currentBranch -notin $protectedBranches) {
 }
 
 # ─── Git Flow source/target rules (Git Flow only) ──────────────────────────
-Write-Host "`n--- Git Flow Source Rules ---" -ForegroundColor Cyan
+Write-Head "`n--- Git Flow Source Rules ---"
 
 if ($strategy -eq 'git-flow') {
     if ($currentBranch -match '^(feature|fix|chore)/') {
@@ -177,9 +210,37 @@ if ($strategy -eq 'git-flow') {
 }
 
 # ─── Result ────────────────────────────────────────────────────────────────
+if ($failures.Count -gt 0) {
+    $status = 'blocked'
+    $nextStep = "Resolve the $($failures.Count) failure(s) above before implementing on this branch."
+} elseif ($warnings.Count -gt 0) {
+    $status = 'warn'
+    $nextStep = 'Review the warnings, then proceed if the branch state is intentional.'
+} else {
+    $status = 'pass'
+    $nextStep = 'Branch rules satisfied. Safe to continue work on this branch.'
+}
+
+if ($jsonMode) {
+    [ordered]@{
+        status                = $status
+        project_root          = $root
+        platform              = $platform
+        project_type          = $projectType
+        current_branch        = if ($currentBranch) { $currentBranch } else { '' }
+        profile               = $profile
+        branching_strategy    = $strategy
+        risks                 = $failures.ToArray()
+        failures              = $failures.ToArray()
+        warnings              = $warnings.ToArray()
+        recommended_next_step = $nextStep
+    } | ConvertTo-Json -Depth 5
+    if ($status -eq 'blocked') { exit 1 } else { exit 0 }
+}
+
 Write-Host "`n====================================`n" -ForegroundColor Cyan
 
-if ($failures.Count -gt 0) {
+if ($status -eq 'blocked') {
     Write-Host "[RESULT] BLOCKED" -ForegroundColor Red
     Write-Host "Failures ($($failures.Count)):" -ForegroundColor Red
     foreach ($f in $failures) { Write-Host "  - $f" -ForegroundColor Red }
@@ -189,7 +250,7 @@ if ($failures.Count -gt 0) {
     }
     Write-Host ""
     exit 1
-} elseif ($warnings.Count -gt 0) {
+} elseif ($status -eq 'warn') {
     Write-Host "[RESULT] PASS with warnings" -ForegroundColor Yellow
     Write-Host "Warnings ($($warnings.Count)):" -ForegroundColor Yellow
     foreach ($w in $warnings) { Write-Host "  - $w" -ForegroundColor Yellow }

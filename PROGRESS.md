@@ -40,6 +40,17 @@
 - Added docs/compatibility.md, docs/upgrade.md, docs/testing.md
 - Added PROGRESS.md (this file)
 
+**Phase 3 (stabilization / quality pass):**
+- Fixed runtime bug: `guard-before-edit.ps1` called undefined `Write-Ok` -> `Write-Pass`
+- Resolved strict-migration inconsistency: `bootstrap-project.ps1` header now documents
+  two script modes + clarifies strict-migration is an agent (skill) mode, not a script mode
+- Added `-OutputFormat Text|Json` to `guard-git-flow.ps1` (mirrors audit; reuses WorkflowDetection lib)
+- Aligned JSON schema across audit + guard-git-flow: `current_branch`, `failures`, `warnings`
+- Added sensitive-file awareness scan to `guard-before-edit.ps1` (paths only, never contents;
+  honors .gitignore so node_modules/vendor are skipped)
+- Validated: all 11 .ps1 parse clean, .ai-skills.json valid JSON, .ai-workflow.yml valid YAML,
+  CI templates valid YAML, self-test 53/0/0, self-audit clean
+
 ## Next recommended step
 
 - Review PR on GitHub

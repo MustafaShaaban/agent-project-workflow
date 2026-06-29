@@ -5,10 +5,15 @@
 
 .DESCRIPTION
     Copies missing workflow files from the templates directory into the target project.
-    Supports three modes:
+    Supports two script modes:
       observe-only    - Audit and report without writing any files
       safe-bootstrap  - Add missing files only, skip existing (default)
-      force           - Overwrite existing files (use with caution)
+    Use the -Force switch with safe-bootstrap to overwrite existing files (use with caution).
+
+    NOTE: 'strict-migration' is an agent workflow mode handled by the project-workflow
+    skill (SKILL.md), not a mode of this script. It directs the agent to propose a
+    Git Flow / full-policy migration plan and wait for owner approval before any change.
+    This script intentionally does not automate strict-migration; see docs/existing-projects.md.
 
     Also copies .ai-workflow.yml and .ai-skills.json templates when not present.
 

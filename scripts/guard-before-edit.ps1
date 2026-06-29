@@ -155,7 +155,7 @@ foreach ($f in $requiredFiles) {
 foreach ($f in $optionalFiles) {
     if ($f -notin $requiredFiles) {
         if (Test-Path (Join-Path $root $f)) {
-            Write-Ok "$f exists (optional)"
+            Write-Pass "$f exists (optional)"
         } else {
             Write-Info "$f missing (optional)"
         }
@@ -169,6 +169,43 @@ if (Test-Path (Join-Path $root '.ai-skills.json')) {
     Write-Pass ".ai-skills.json found"
 } else {
     Write-Info ".ai-skills.json not present (optional but recommended)"
+}
+
+# ─── Sensitive files ───────────────────────────────────────────────────────
+Write-Host "`n--- Sensitive Files ---" -ForegroundColor Cyan
+
+# Patterns the agent must stop and ask about before editing. Paths only are ever
+# reported here - file contents are never read or printed.
+$sensitivePatterns = @(
+    '(^|/)\.env$'
+    '(^|/)\.env\.[^/]+$'
+    '\.(pem|key|p12|pfx)$'
+    '(secret|credential|password|private[_-]?key)'
+    '(^|/)\.vault_pass'
+    '(^|/)secrets\.(ya?ml|json)$'
+    '\.(sql|db|sqlite)$'
+    '\.(bak|backup)$'
+)
+# .env.example / .env.sample and lock files are safe templates - never flagged.
+$sensitiveExclude = '(\.env\.(example|sample|dist)$|\.example$|\.sample$|composer\.lock$|package-lock\.json$)'
+
+Push-Location $root
+# git-tracked + untracked-but-not-ignored files only: skips node_modules/, vendor/, etc.
+$candidateFiles = @(git ls-files --cached --others --exclude-standard 2>$null)
+Pop-Location
+
+$sensitiveHits = $candidateFiles | Where-Object {
+    $f = $_
+    if ($f -match $sensitiveExclude) { return $false }
+    foreach ($p in $sensitivePatterns) { if ($f -match $p) { return $true } }
+    return $false
+} | Select-Object -Unique
+
+if ($sensitiveHits.Count -gt 0) {
+    Write-Warn "Sensitive files detected. Stop and ask the owner before editing these; never print their values:"
+    foreach ($h in $sensitiveHits) { Write-Info "  $h" }
+} else {
+    Write-Pass "No sensitive files detected in tracked/untracked scope"
 }
 
 # ─── Result ────────────────────────────────────────────────────────────────
