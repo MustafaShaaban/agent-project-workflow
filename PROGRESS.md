@@ -2,7 +2,7 @@
 
 ## Current status
 
-- Status: v0.3.0 production hardening verified; publication commit pending
+- Status: v0.3.0 production hardening verified and published to `origin/master`
 - Last updated: 2026-06-29
 
 ## Active branch
@@ -109,7 +109,7 @@
 
 ## Open blockers
 
-- None. The release commit and remote push are the remaining publication steps.
+- None.
 
 ## Future improvements
 
