@@ -35,12 +35,14 @@ $auditData = @{
     project_root         = $target
     platform             = 'unknown'
     project_type         = 'unknown'
-    branch               = ''
+    current_branch       = ''
     profile              = 'standard'
     branching_strategy   = 'unknown'
     skills_required      = @('project-workflow')
     skills_missing       = @()
     risks                = @()
+    failures             = @()
+    warnings             = @()
     recommended_next_step = ''
 }
 
@@ -329,9 +331,11 @@ if (Test-Path (Join-Path $target '.ai-skills.json')) {
 # ─── Collect JSON data at detection completion ─────────────────────────────
 $auditData.platform            = $platform
 $auditData.project_type        = $projectType
-$auditData.branch              = if ($currentBranch) { $currentBranch } else { '' }
+$auditData.current_branch      = if ($currentBranch) { $currentBranch } else { '' }
 $auditData.branching_strategy  = $branchStrategy
 $auditData.risks               = $risks.ToArray()
+$auditData.failures            = @()
+$auditData.warnings            = $risks.ToArray()
 if ($isWordPress) { $auditData.skills_missing = @('wp-guard') }
 
 $resolvedNextStep = if ($nextStep) { $nextStep } `
