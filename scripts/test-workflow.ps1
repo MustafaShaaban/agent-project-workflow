@@ -23,13 +23,42 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$pass = 0; $warn = 0; $fail = 0
+$pass = 0
+$warn = 0
+$fail = 0
 
-function Write-Pass { param([string]$Msg) Write-Host "  [PASS] $Msg" -ForegroundColor Green;  $script:pass++ }
-function Write-Fail { param([string]$Msg) Write-Host "  [FAIL] $Msg" -ForegroundColor Red;    $script:fail++ }
-function Write-Warn { param([string]$Msg) Write-Host "  [WARN] $Msg" -ForegroundColor Yellow; $script:warn++ }
-function Write-Info { param([string]$Msg) Write-Host "  [INFO] $Msg" -ForegroundColor Gray }
-function Write-Section { param([string]$T) Write-Host "`n=== $T ===" -ForegroundColor Cyan }
+function Write-Pass {
+    param([string]$Message)
+
+    Write-Host "  [PASS] $Message" -ForegroundColor Green
+    $script:pass++
+}
+
+function Write-Fail {
+    param([string]$Message)
+
+    Write-Host "  [FAIL] $Message" -ForegroundColor Red
+    $script:fail++
+}
+
+function Write-Warn {
+    param([string]$Message)
+
+    Write-Host "  [WARN] $Message" -ForegroundColor Yellow
+    $script:warn++
+}
+
+function Write-Info {
+    param([string]$Message)
+
+    Write-Host "  [INFO] $Message" -ForegroundColor Gray
+}
+
+function Write-Section {
+    param([string]$Title)
+
+    Write-Host "`n=== $Title ===" -ForegroundColor Cyan
+}
 
 Write-Host "`n================================================" -ForegroundColor Cyan
 Write-Host " agent-project-workflow Self-Test" -ForegroundColor Cyan

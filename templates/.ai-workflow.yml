@@ -4,38 +4,38 @@
 
 project:
   name: "[project-name]"
-  type: auto
   # auto | wordpress | php | laravel | js | ts | react | vue | svelte | python | dotnet | unknown
+  type: auto
 
 platform:
-  provider: auto
   # auto | github | azure-devops | generic-git
+  provider: auto
 
 workflow:
-  profile: standard
   # minimal    - safe root detection, no heavy process, no required docs
   # standard   - branch safety, progress tracking, verification, PR-friendly (default)
   # strict     - mandatory Git Flow, guard scripts, required checks, strong handoff rules
   # enterprise - strict + governance, reviewers, branch policies, auditability
+  profile: standard
 
-  mode: normal
   # normal           - normal session start
   # observe-only     - audit only, no file modifications
   # safe-bootstrap   - add missing workflow files, skip existing
   # strict-migration - propose Git Flow conversion, requires explicit owner approval
+  mode: normal
 
 branching:
-  strategy: github-flow
   # git-flow     - feature/fix/chore from develop; release/hotfix with merge-back
   # github-flow  - feature branches from main (default)
   # trunk-based  - short-lived branches or direct commits to trunk
   # custom       - agent reads AGENTS.md/CLAUDE.md for branching rules
+  strategy: github-flow
 
-  production_branch: main
   # main | master | trunk
+  production_branch: main
 
-  integration_branch: develop
   # Used only when strategy is git-flow
+  integration_branch: develop
 
   allowed_work_branch_patterns:
     - "feature/*"
@@ -48,11 +48,11 @@ agent_safety:
   require_real_root: true
   stop_on_unexpected_worktree: true
   never_implement_on_production: true
-  never_implement_on_integration: true
   # Set never_implement_on_integration to false to allow small docs/chore changes on develop
+  never_implement_on_integration: true
 
-  require_clean_worktree: false
   # If true, stop and report when the worktree is dirty before editing
+  require_clean_worktree: false
 
 documentation:
   required:
@@ -70,15 +70,15 @@ verification:
 
 handoff:
   required: true
-  format: full
   # full  - full structured handoff with all sections
   # brief - short summary only
+  format: full
 
 skills:
-  install_mode: ask
   # ask                - detect missing skills and ask before installing (default)
   # auto-approved-only - install only skills with install_approved: true in .ai-skills.json
   # never              - never install; stop and report missing skills
+  install_mode: ask
 
   required:
     - project-workflow
@@ -88,7 +88,7 @@ skills:
       condition: wordpress_detected
 
 wordpress:
-  guard_required: true
   # When true and a WordPress project is detected, wp-guard is required.
   # minimal/standard: warn and ask before continuing without it
   # strict/enterprise: stop until installed or explicitly bypassed
+  guard_required: true

@@ -1,19 +1,22 @@
 # agent-project-workflow
 
 A portable, professional AI project workflow system for software repositories.
-Provides the global `project-workflow` skill, workflow profiles, platform adapters,
-guard scripts, PR templates, and project starter templates that work with any
-Git repository — including GitHub and Azure DevOps projects.
+It provides the global `project-workflow` skill, workflow profiles, platform
+adapters, guard scripts, PR templates, and project starter templates that work
+with any Git repository—including GitHub and Azure DevOps projects.
 
 ## What it does
 
-- Gives AI agents (Claude Code, Codex) a safe, consistent startup routine for any repo
+- Gives AI agents (Claude Code, Codex) a safe, consistent startup routine for
+  any repository
 - Detects platform (GitHub / Azure DevOps / generic Git), project type, and CI
-- Enforces configurable workflow profiles: `minimal`, `standard`, `strict`, `enterprise`
+- Enforces configurable workflow profiles: `minimal`, `standard`, `strict`,
+  and `enterprise`
 - Supports Git Flow, GitHub Flow, and trunk-based branching strategies
 - Guards against unsafe edits, branch violations, and missing skills
 - Requires `wp-guard` for WordPress projects (via companion skill)
-- Produces structured handoffs with platform, project type, skills status, and next steps
+- Produces structured handoffs with platform, project type, skills status,
+  and next steps
 
 ## What it does NOT do
 
@@ -23,7 +26,8 @@ Git repository — including GitHub and Azure DevOps projects.
 - It does not overwrite existing workflow files by default
 - It does not create hidden worktrees or discard local changes
 - It does not push to GitHub or Azure DevOps without explicit instruction
-- It does not install missing skills silently (always asks, unless config allows it)
+- It does not install missing skills silently (always asks unless configuration
+  allows it)
 
 ## Quick install
 

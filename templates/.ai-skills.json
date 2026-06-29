@@ -73,14 +73,33 @@
       ]
     },
     "ci": {
-      "github_actions": [".github/workflows/*.yml"],
-      "azure_pipelines": ["azure-pipelines.yml", ".azure/pipelines/*.yml"],
-      "other": ["Jenkinsfile", ".circleci/", ".travis.yml", "bitbucket-pipelines.yml"]
+      "github_actions": [
+        ".github/workflows/*.yml"
+      ],
+      "azure_pipelines": [
+        "azure-pipelines.yml",
+        ".azure/pipelines/*.yml"
+      ],
+      "other": [
+        "Jenkinsfile",
+        ".circleci/",
+        ".travis.yml",
+        "bitbucket-pipelines.yml"
+      ]
     },
     "branching": {
-      "git_flow": ["develop branch exists", "release/* branches exist"],
-      "trunk_based": ["no develop branch", "short-lived feature branches only"],
-      "github_flow": ["feature branches from main", "no develop branch"]
+      "git_flow": [
+        "develop branch exists",
+        "release/* branches exist"
+      ],
+      "trunk_based": [
+        "no develop branch",
+        "short-lived feature branches only"
+      ],
+      "github_flow": [
+        "feature branches from main",
+        "no develop branch"
+      ]
     }
   }
 }
