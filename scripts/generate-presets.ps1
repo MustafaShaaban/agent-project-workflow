@@ -5,6 +5,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $presetRoot = Join-Path $repoRoot 'presets'
+. (Join-Path $PSScriptRoot 'lib\JsonFormatting.ps1')
 $managedStart = '<!-- agent-project-workflow:start -->'
 $managedEnd = '<!-- agent-project-workflow:end -->'
 $specKitCommandOrder = @(
@@ -96,7 +97,7 @@ foreach ($preset in $presets) {
     $requiredSkills = @('project-workflow', 'clean-code-guard', 'test-guard', 'docs-guard')
     if ($preset.wordpress) { $requiredSkills += 'wp-guard' }
     if ($preset.woo) { $requiredSkills += 'woo-guard' }
-    $skillsJson = [ordered]@{
+    $skillsPolicy = [ordered]@{
         version = '1.0'
         install_mode = 'ask'
         authority = [ordered]@{
@@ -126,7 +127,8 @@ foreach ($preset in $presets) {
             )
             optional = if ($preset.wordpress) { @('wp-plugin-development', 'wp-block-development', 'wp-performance', 'wp-phpstan', 'wp-playground') } else { @() }
         }
-    } | ConvertTo-Json -Depth 8
+    }
+    $skillsJson = ConvertTo-ReadableJson -InputObject $skillsPolicy -Depth 8
 
     $workflowYaml = @"
 workflow:

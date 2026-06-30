@@ -28,6 +28,9 @@
   skills-mode order checks, doctor enforcement, LF preset generation, and stronger
   raw-file readability checks. Verification passed with 169 passes, 0 warnings,
   and 0 failures.
+- Final correction added a standalone strict UTF-8 raw-readability verifier,
+  hidden/bidirectional Unicode rejection, malformed-format regression cases, and
+  deterministic two-space JSON generation for project policy and all presets.
 
 ### v0.3.0 production hardening (2026-06-29)
 

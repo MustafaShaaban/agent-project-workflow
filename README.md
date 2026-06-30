@@ -382,5 +382,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-workflow.ps1
 git diff --check
 ```
 
+For a focused byte-level check of GitHub raw readability and hidden Unicode:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-raw-readability.ps1
+```
+
+This check reports normalized line counts for the primary README, Spec Kit guide,
+workflow YAML, and skills JSON. It rejects collapsed content, embedded Markdown
+headings, multiple workflow YAML keys on one line, compact policy JSON, invalid
+UTF-8, and hidden or bidirectional Unicode control characters.
+
 `.github/workflows/verify.yml` runs the same checks for pushes and pull requests
 targeting `master`.

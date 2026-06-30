@@ -33,6 +33,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'lib\WorkflowDetection.ps1')
+. (Join-Path $PSScriptRoot 'lib\JsonFormatting.ps1')
 
 Set-Variable -Name ManagedStart -Value '<!-- agent-project-workflow:start -->' -Option Constant -Scope Script
 Set-Variable -Name ManagedEnd -Value '<!-- agent-project-workflow:end -->' -Option Constant -Scope Script
@@ -629,7 +630,7 @@ function Get-SkillsJson {
             reason = "Recommended for WordPress build work when relevant."
         }
     }
-    ([ordered]@{
+    $policy = [ordered]@{
         version = '1.0'
         install_mode = 'ask'
         authority = [ordered]@{
@@ -653,7 +654,8 @@ function Get-SkillsJson {
             )
             optional = $optional
         }
-    } | ConvertTo-Json -Depth 8)
+    }
+    return ConvertTo-ReadableJson -InputObject $policy -Depth 8
 }
 
 function Get-ConstitutionBody {

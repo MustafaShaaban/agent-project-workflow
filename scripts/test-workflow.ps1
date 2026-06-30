@@ -7,10 +7,12 @@
     Tests:
     - PowerShell script syntax for all scripts
     - JSON validity for .ai-skills.json template (parsed with ConvertFrom-Json)
-    - YAML validity for .ai-workflow.yml template (parsed with a real YAML parser
-      if one is installed; WARN — never PASS — when no parser is available)
+    - YAML validity for .ai-workflow.yml template (parsed with a real YAML parser;
+      a missing parser is a release failure)
     - Format / line-count sanity so README.md and templates are rejected if
       collapsed into a handful of very long lines
+    - Strict UTF-8 raw readability, embedded heading, compact YAML/JSON, and
+      hidden/bidirectional Unicode regression checks
     - Audit script against all test fixtures
     - Guard script syntax (already covered by PS parser)
     - Bootstrap observe-only mode against a fixture
@@ -214,6 +216,18 @@ foreach ($relativePath in $specKitPolicyFiles) {
     } else {
         Write-Fail "$relativePath must contain command and Codex skills-mode Spec Kit orders"
     }
+}
+
+$specKitDoc = [System.IO.File]::ReadAllText(
+    (Join-Path $repoRoot 'docs\spec-kit.md'),
+    [System.Text.Encoding]::UTF8
+).Replace("`r`n", "`n").Replace("`r", "`n")
+$readableSpecKitOrder = (@($specKitCommandOrder[0..7]) + '/speckit.converge when available/needed') -join "`n"
+if (($specKitDoc -match '(?m)^## Exact enforced Spec Kit order$') -and
+    $specKitDoc.Contains($readableSpecKitOrder)) {
+    Write-Pass 'docs\spec-kit.md presents the exact readable production order'
+} else {
+    Write-Fail 'docs\spec-kit.md must show the exact production order as consecutive lines, including converge when available/needed'
 }
 
 # ─── 4. Audit on fixtures ──────────────────────────────────────────────────
@@ -560,6 +574,15 @@ try {
     $generatedWorkflow = Get-Content (Join-Path $genericPolicyRoot '.ai-workflow.yml') -Raw
     $generatedSkillsText = Get-Content (Join-Path $genericPolicyRoot '.ai-skills.json') -Raw
     $generatedSkills = $generatedSkillsText | ConvertFrom-Json
+    $generatedSkillsLines = @($generatedSkillsText.Replace("`r`n", "`n").Replace("`r", "`n") -split "`n")
+    $generatedSkillsPretty = ($generatedSkillsLines.Count -ge 20) -and
+        ($generatedSkillsLines[0] -eq '{') -and
+        ($generatedSkillsLines[-1] -eq '}') -and
+        -not $generatedSkillsText.Contains("`t") -and
+        (@($generatedSkillsLines | Where-Object {
+            $leadingSpaces = $_.Length - $_.TrimStart(' ').Length
+            ($leadingSpaces % 2) -ne 0
+        }).Count -eq 0)
     $generatedAgents = Get-Content (Join-Path $genericPolicyRoot 'AGENTS.md') -Raw
     $generatedClaude = Get-Content (Join-Path $genericPolicyRoot 'CLAUDE.md') -Raw
     $generatedGuide = Get-Content (Join-Path $genericPolicyRoot 'PROJECT-WORKING-GUIDE.md') -Raw
@@ -597,7 +620,8 @@ try {
         ($generatedClaude -match 'must not replace Spec Kit') -and
         ($generatedGuide -match 'must not replace Spec Kit') -and
         $generatedOrdersValid -and
-        $generatedYamlValid) {
+        $generatedYamlValid -and
+        $generatedSkillsPretty) {
         Write-Pass 'generated generic workflow enforces Spec Kit and skill precedence'
     } else {
         Write-Fail 'generated generic workflow must encode Spec Kit authority and anti-drift policy'
@@ -835,6 +859,60 @@ foreach ($d in $expectedDocs) {
 
 # ─── 11. Format / line-count sanity ───────────────────────────────────────
 Write-Section "11. Format / Line-Count Sanity"
+
+$rawReadabilityVerifier = Join-Path $repoRoot 'scripts\verify-raw-readability.ps1'
+if (-not (Test-Path -LiteralPath $rawReadabilityVerifier -PathType Leaf)) {
+    Write-Fail 'scripts\verify-raw-readability.ps1 is required'
+} else {
+    $readabilityOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $rawReadabilityVerifier `
+        -TargetPath $repoRoot 2>&1
+    $readabilityOutput | ForEach-Object { Write-Info $_ }
+    if ($LASTEXITCODE -eq 0) {
+        Write-Pass 'byte-level raw readability and hidden-character verification'
+    } else {
+        Write-Fail 'byte-level raw readability and hidden-character verification failed'
+    }
+
+    $readabilityFixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) `
+        "apw-readability-$([guid]::NewGuid().ToString('N'))"
+    $fixtureUtf8 = New-Object System.Text.UTF8Encoding($false)
+    try {
+        New-Item -ItemType Directory -Path $readabilityFixtureRoot -Force | Out-Null
+        $collapsedMarkdown = Join-Path $readabilityFixtureRoot 'collapsed.md'
+        $embeddedHeading = Join-Path $readabilityFixtureRoot 'embedded-heading.md'
+        $collapsedYaml = Join-Path $readabilityFixtureRoot '.ai-workflow.yml'
+        $compactJson = Join-Path $readabilityFixtureRoot '.ai-skills.json'
+        $hiddenText = Join-Path $readabilityFixtureRoot 'hidden.md'
+
+        [System.IO.File]::WriteAllText($collapsedMarkdown, '# Heading and every paragraph collapsed onto one line', $fixtureUtf8)
+        [System.IO.File]::WriteAllText($embeddedHeading, "# Heading`nParagraph ## Embedded heading`n", $fixtureUtf8)
+        $yamlFixture = @('workflow: normal planning: spec-kit') + @(1..19 | ForEach-Object { "# filler $_" })
+        [System.IO.File]::WriteAllText($collapsedYaml, ($yamlFixture -join "`n") + "`n", $fixtureUtf8)
+        [System.IO.File]::WriteAllText($compactJson, '{"version":"1.0","install_mode":"ask"}', $fixtureUtf8)
+        $intentionalBidi = [char]0x202E
+        [System.IO.File]::WriteAllText($hiddenText, "# Heading`nText $intentionalBidi control`n", $fixtureUtf8)
+
+        $negativeCases = @(
+            @{ path = $collapsedMarkdown; expected = 'only 1 lines'; name = 'collapsed Markdown' }
+            @{ path = $embeddedHeading; expected = 'heading marker appears in the middle'; name = 'embedded Markdown heading' }
+            @{ path = $collapsedYaml; expected = 'multiple YAML keys appear collapsed'; name = 'collapsed workflow YAML keys' }
+            @{ path = $compactJson; expected = 'not readable multi-line'; name = 'compact skills JSON' }
+            @{ path = $hiddenText; expected = 'hidden/bidi character U+202E'; name = 'hidden/bidirectional Unicode' }
+        )
+        foreach ($case in $negativeCases) {
+            $caseOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $rawReadabilityVerifier `
+                -TargetPath $readabilityFixtureRoot -Files $case.path 2>&1
+            $caseText = $caseOutput | Out-String
+            if (($LASTEXITCODE -ne 0) -and ($caseText -match [regex]::Escape($case.expected))) {
+                Write-Pass "raw verifier rejects $($case.name)"
+            } else {
+                Write-Fail "raw verifier did not reject $($case.name) for the expected reason"
+            }
+        }
+    } finally {
+        Remove-Item -LiteralPath $readabilityFixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 
 # Guards against files being collapsed into a handful of very long lines
 # (e.g. real newlines stripped during a bad merge or copy/paste).

@@ -25,7 +25,7 @@ The production command order is:
 /speckit.tasks
 /speckit.analyze
 /speckit.implement
-/speckit.converge
+/speckit.converge when available/needed
 ```
 
 For Codex skills mode, use:

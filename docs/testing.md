@@ -29,6 +29,18 @@ Exit codes:
 The test discovers `powershell-yaml`, `PSYaml`, or Python with PyYAML. GitHub
 Actions installs the pinned PyYAML version before running the suite.
 
+The suite also invokes the standalone raw-file verifier. Run it directly when
+diagnosing GitHub raw-view or hidden-text warnings:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-raw-readability.ps1
+```
+
+It prints normalized line counts for the README, Spec Kit guide, workflow YAML,
+and skills JSON. It fails on collapsed files, Markdown headings embedded in prose,
+multiple workflow YAML keys on one line, compact policy JSON, invalid UTF-8, or
+hidden/bidirectional Unicode control characters.
+
 ## Test fixtures
 
 Fixtures are under `tests/fixtures/`:
