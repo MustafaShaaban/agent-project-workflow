@@ -65,6 +65,38 @@ function Get-WfPlatform {
     return 'generic-git'
 }
 
+function Test-WfGitRoot {
+    <#
+    .SYNOPSIS Returns true when the target directory is the root of a Git repository.
+    #>
+    param([string]$ProjectRoot)
+
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $false }
+    $expectedRoot = [System.IO.Path]::GetFullPath($ProjectRoot).TrimEnd('\', '/')
+    $previousErrorPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $detectedRoot = (& git -C $ProjectRoot rev-parse --show-toplevel 2>$null | Out-String).Trim()
+        $gitExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorPreference
+    }
+    if (($gitExitCode -ne 0) -or (-not $detectedRoot)) { return $false }
+    $normalizedRoot = [System.IO.Path]::GetFullPath($detectedRoot).TrimEnd('\', '/')
+    return $normalizedRoot -eq $expectedRoot
+}
+
+function Test-WfEmptyDirectory {
+    <#
+    .SYNOPSIS Returns true when no project content exists; an optional .git directory is ignored.
+    #>
+    param([string]$ProjectRoot)
+
+    $projectEntries = @(Get-ChildItem -LiteralPath $ProjectRoot -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne '.git' })
+    return $projectEntries.Count -eq 0
+}
+
 function Get-WfProjectType {
     <#
     .SYNOPSIS Detects the project type. Returns: wordpress | laravel | react | vue | nextjs | svelte | js/ts | php | dotnet | python | unknown

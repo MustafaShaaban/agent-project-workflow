@@ -1,24 +1,44 @@
-# Automatic Activation
+# Automatic activation
 
-Generated `AGENTS.md`, `CLAUDE.md`, `PROJECT-WORKING-GUIDE.md`, and
-`specs/constitution.md` contain the workflow-owned block between these exact
-markers:
+Automatic activation means future agents can follow the repository workflow
+without the owner repeating "use project-workflow" in every prompt.
+
+## What makes it durable
+
+Initialization creates repository-local files:
+
+- `AGENTS.md`: Codex and general agent startup and authority rules.
+- `CLAUDE.md`: Claude Code entry point.
+- `PROJECT-WORKING-GUIDE.md`: human-readable task and handoff process.
+- `.ai-workflow.yml`: profile, authority, Spec Kit, branch, and safety policy.
+- `.ai-skills.json`: machine-readable skill requirements and precedence.
+- `.agent-workflow.lock.json`: detected and generated setup state.
+- `PROGRESS.md`, `DECISIONS.md`, and Spec Kit files: durable work state.
+
+A global project-workflow skill helps an agent discover the process, but global
+installation alone is not enough. The repository-local files make the chosen
+rules and planning authority travel with the project and survive new chats.
+
+## What happens when Codex or Claude opens the repo later
+
+The agent should read its entry-point file, resolve the real Git root, inspect
+status/branch/remotes/worktrees, detect platform/CI/project type, read workflow
+and skill policy, inspect Spec Kit and durable state, and report the mode and next
+step before implementation.
+
+For non-trivial work, the agent must follow the exact Spec Kit order through
+analyze before implementation. Optional workflow or executor skills cannot replace
+that authority. Conditional guards apply only when their condition matches.
+
+## Managed blocks preserve owner content
+
+Workflow-owned text is placed between exact markers:
 
 ```markdown
 <!-- agent-project-workflow:start -->
 <!-- agent-project-workflow:end -->
 ```
 
-The three agent entry-point files instruct supported agents to follow
-project-workflow automatically.
-
-Agents must run the startup sequence before planning, editing, writing code, changing docs, running commands, committing, pushing, or merging, even when the user does not mention `project-workflow`.
-
-The startup sequence resolves the real root, checks Git state, detects platform/CI/project type, reads workflow config and lock files, reads instruction/progress/decision/constitution files, then states the mode and recommended next step.
-
-This removes chat-history dependency and makes the workflow repo-local.
-
-Upgrade replaces only the inclusive managed block. Owner content before and
-after the block is preserved. An existing file without exactly one ordered
-marker pair is treated as owner-managed and receives a `.suggested.md` proposal
-instead of being overwritten.
+Upgrade changes only the valid managed block. Text before or after it is owner
+content and remains unchanged. Files without one valid ordered marker pair receive
+a `.suggested.md` proposal instead of being overwritten.

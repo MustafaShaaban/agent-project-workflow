@@ -1,6 +1,6 @@
 # WordPress Preset
 
-WordPress is the first-class priority for this workflow.
+WordPress is a supported conditional archetype, not the default for every project.
 
 ## Detection
 

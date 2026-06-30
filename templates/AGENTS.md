@@ -28,6 +28,61 @@ Startup sequence:
 19. Read the active spec if present.
 20. State detected mode and recommended next step before implementation.
 
+## Workflow authority
+
+- `project-workflow` owns startup, repository detection, safety, verification, and handoff.
+- Spec Kit owns constitution, specify, clarify, plan, checklist, tasks, analyze,
+  implement, and conditional converge for non-trivial work.
+- Guard skills are safety authorities only when their project or risk condition applies.
+- Optional executor, build, debug, Superpowers, or similar skills may help only
+  after checklist, tasks, and analyze complete.
+- Do not use competing planning skills to replace Spec Kit unless the owner explicitly overrides this repository policy.
+
+### Exact enforced Spec Kit order
+
+```text
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+```
+
+Codex skills-mode equivalent:
+
+```text
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+```
+
+Do not skip or reorder steps. Run `converge` when available and needed; otherwise
+record why it was not applicable.
+
+## Before implementation
+
+- Confirm setup is complete and report the active spec and task IDs.
+- For non-trivial work, stop if checklist, tasks, or analyze is incomplete. Ask to
+  initialize or continue Spec Kit; never install it silently.
+- Do not move from an incomplete bootstrap or audit directly into application implementation.
+
+## Empty directory or missing Git
+
+- Detect whether the directory has project indicators and whether it is the actual Git root.
+- Ask whether to initialize Git unless the owner explicitly requested full bootstrap.
+- Ask for the project type only when it cannot be inferred.
+- Apply only approved workflow files, run doctor/audit, and stop with a recommended next step.
+
 ## Safety
 
 - Work from the real Git root only.
@@ -39,6 +94,7 @@ Startup sequence:
 - Ask recommendation-first questions only when repo inspection cannot answer safely.
 - Keep `PROGRESS.md` and `DECISIONS.md` current.
 - End with verification, recommended options, and mandatory `NEXT STEP`.
+- Preserve all content outside this managed block, including project-specific notes.
 <!-- agent-project-workflow:end -->
 
 ## Project-specific notes

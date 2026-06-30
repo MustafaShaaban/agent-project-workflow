@@ -5,8 +5,58 @@ param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $presetRoot = Join-Path $repoRoot 'presets'
+. (Join-Path $PSScriptRoot 'lib\JsonFormatting.ps1')
 $managedStart = '<!-- agent-project-workflow:start -->'
 $managedEnd = '<!-- agent-project-workflow:end -->'
+$specKitCommandOrder = @(
+    '/speckit.constitution',
+    '/speckit.specify',
+    '/speckit.clarify',
+    '/speckit.plan',
+    '/speckit.checklist',
+    '/speckit.tasks',
+    '/speckit.analyze',
+    '/speckit.implement',
+    '/speckit.converge'
+)
+$specKitSkillOrder = @(
+    '$speckit-constitution',
+    '$speckit-specify',
+    '$speckit-clarify',
+    '$speckit-plan',
+    '$speckit-checklist',
+    '$speckit-tasks',
+    '$speckit-analyze',
+    '$speckit-implement',
+    '$speckit-converge'
+)
+$specKitOrderText = @'
+Production commands:
+
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+
+Codex skills mode:
+
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+
+Do not skip or reorder steps. Run converge when available and needed; otherwise record why it was not applicable.
+'@
 
 $presets = @(
     @{ name = 'generic'; wordpress = $false; woo = $false; description = 'Generic software project workflow.' }
@@ -23,7 +73,9 @@ function Set-GeneratedFile {
     param([string]$Path, [string]$Content)
     $directory = Split-Path -Parent $Path
     if (-not (Test-Path $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
-    Set-Content -LiteralPath $Path -Value $Content -Encoding UTF8
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    $normalizedContent = (($Content -replace "`r`n", "`n") -replace "`r", "`n").TrimEnd("`n") + "`n"
+    [System.IO.File]::WriteAllText($Path, $normalizedContent, $utf8NoBom)
 }
 
 function Get-InstallCommand {
@@ -45,9 +97,22 @@ foreach ($preset in $presets) {
     $requiredSkills = @('project-workflow', 'clean-code-guard', 'test-guard', 'docs-guard')
     if ($preset.wordpress) { $requiredSkills += 'wp-guard' }
     if ($preset.woo) { $requiredSkills += 'woo-guard' }
-    $skillsJson = [ordered]@{
+    $skillsPolicy = [ordered]@{
         version = '1.0'
         install_mode = 'ask'
+        authority = [ordered]@{
+            startup = 'project-workflow'
+            planning = 'spec-kit'
+            safety = 'conditional-guard-skills'
+            implementation = 'after-speckit-analyze'
+            optional_executor_skills_may_replace_planning = $false
+            owner_override_required = $true
+        }
+        spec_kit = [ordered]@{
+            enforced_order = $specKitCommandOrder
+            codex_skills_mode_order = $specKitSkillOrder
+            converge = 'when-available-and-needed'
+        }
         skills = [ordered]@{
             required = @($requiredSkills | ForEach-Object {
                 [ordered]@{
@@ -56,9 +121,14 @@ foreach ($preset in $presets) {
                     install_command = Get-InstallCommand -SkillName $_
                 }
             })
+            conditional_required = @(
+                [ordered]@{ name = 'wp-guard'; condition = 'wordpress_detected'; install_approved = $false }
+                [ordered]@{ name = 'woo-guard'; condition = 'woocommerce_detected'; install_approved = $false }
+            )
             optional = if ($preset.wordpress) { @('wp-plugin-development', 'wp-block-development', 'wp-performance', 'wp-phpstan', 'wp-playground') } else { @() }
         }
-    } | ConvertTo-Json -Depth 8
+    }
+    $skillsJson = ConvertTo-ReadableJson -InputObject $skillsPolicy -Depth 8
 
     $workflowYaml = @"
 workflow:
@@ -66,12 +136,42 @@ workflow:
   profile: standard
   archetype: $($preset.name)
   automatic_activation: true
+workflow_authority:
+  startup: project-workflow
+  planning: spec-kit
+  implementation: after-speckit-analyze
+  verification: project-workflow
+  optional_executor_skills_may_replace_planning: false
 branching:
   strategy: github-flow
   production_branch: main
 spec_kit:
   enabled: true
+  mode: ask-to-initialize
   use_for_non_trivial_work: true
+  enforce_for_non_trivial_work: true
+  require_before_implementation: true
+  enforced_order:
+    - "/speckit.constitution"
+    - "/speckit.specify"
+    - "/speckit.clarify"
+    - "/speckit.plan"
+    - "/speckit.checklist"
+    - "/speckit.tasks"
+    - "/speckit.analyze"
+    - "/speckit.implement"
+    - "/speckit.converge"
+  codex_skills_mode_order:
+    - "`$speckit-constitution"
+    - "`$speckit-specify"
+    - "`$speckit-clarify"
+    - "`$speckit-plan"
+    - "`$speckit-checklist"
+    - "`$speckit-tasks"
+    - "`$speckit-analyze"
+    - "`$speckit-implement"
+    - "`$speckit-converge"
+  converge: when-available-and-needed
 skills:
   install_mode: ask
 safety:
@@ -87,6 +187,12 @@ $managedStart
 For every project request, even if the user does not mention `project-workflow`, automatically follow the startup sequence in `PROJECT-WORKING-GUIDE.md` before planning, editing, running commands, committing, pushing, or merging.
 
 Use one real Git root, preserve user work, protect generated/vendor/build/cache/upload paths, use Spec Kit for non-trivial work, update progress/decisions, run guards, and end with mandatory NEXT STEP.
+
+Project-workflow owns startup and verification. Spec Kit owns the exact enforced
+stages. Guard skills own conditional safety. Optional skills must not replace Spec
+Kit unless the owner explicitly overrides this policy. Implement only after analyze.
+
+$specKitOrderText
 $managedEnd
 
 ## Project-specific notes
@@ -96,7 +202,9 @@ $managedEnd
 # Claude Code Entry Point
 
 $managedStart
-Read `AGENTS.md`, `.ai-workflow.yml`, `.ai-skills.json`, `.agent-workflow.lock.json`, and `PROJECT-WORKING-GUIDE.md`. Automatically follow project-workflow for every request.
+Read `AGENTS.md`, `.ai-workflow.yml`, `.ai-skills.json`, `.agent-workflow.lock.json`, and `PROJECT-WORKING-GUIDE.md`. Automatically follow project-workflow for every request. Use Spec Kit as the non-trivial planning authority; optional skills must not replace it.
+
+$specKitOrderText
 $managedEnd
 
 ## Project-specific notes
@@ -108,7 +216,11 @@ $managedEnd
 $managedStart
 Resolve the real root; inspect status, branch, remotes, and worktrees; detect platform, CI, and archetype; read workflow, lock, instruction, progress, decision, constitution, and active-spec files; state mode and recommended next step.
 
-Classify tasks as Tiny, Normal, or High-risk. High-risk work requires Spec Kit and recommendation-first clarification.
+Classify tasks as Tiny, Normal, or High-risk. Non-trivial work requires every
+enforced Spec Kit stage through analyze before implementation. Optional executor
+skills may help only after analyze passes.
+
+$specKitOrderText
 $managedEnd
 
 ## Project-specific notes
@@ -172,6 +284,8 @@ Checkout, orders, payments, shipping, tax, customer data, and PII are high-risk.
 
 $managedStart
 Use the source-of-truth hierarchy, durable progress/decisions, Spec Kit before non-trivial code, tests/guards before completion, docs with code, CI awareness, branch safety, one real root, recommendation-first questions, and mandatory handoff/NEXT STEP.
+
+$specKitOrderText
 $wordpressRules$wooRules
 $managedEnd
 

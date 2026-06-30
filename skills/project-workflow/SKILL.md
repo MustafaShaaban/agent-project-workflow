@@ -9,6 +9,9 @@ Use one real repository root, read project config and rules first, enforce the
 active profile and branching strategy, check required skills, preserve user work,
 and leave durable state plus a clear structured handoff.
 
+This skill is the startup, orchestration, repository-safety, verification, and
+handoff authority. It remains active throughout setup and implementation.
+
 ---
 
 ## CLI initializer
@@ -24,7 +27,8 @@ This repository ships a PowerShell-first MVP command:
 .\scripts\project-workflow.ps1 install-skills -ApprovedOnly
 ```
 
-Use `init` for existing repositories and `new` for new project starters. `-DryRun`
+Use `init` to add or audit workflow files in the current directory and `new` to
+create a named project starter. `-DryRun`
 is the safe default; write files only with `-Apply`. Existing user files are not
 overwritten silently. Workflow-owned content uses:
 
@@ -84,6 +88,30 @@ Work only from the real Git root. Stop before editing if:
 
 If Git is not initialized: identify the intended project directory and ask before
 initialization, unless the owner explicitly requested bootstrap.
+
+### Greenfield empty-directory flow
+
+When there are no project indicators and no Git root:
+
+1. Report `Empty directory: Yes` and `Git initialized: No`.
+2. Ask whether to initialize Git unless the owner explicitly requested full bootstrap.
+3. Ask for the project type only when it cannot be inferred.
+4. Apply only approved workflow-owned files and preserve any owner files.
+5. Ask before Spec Kit initialization unless approval was explicit.
+6. Create or update durable workflow files, then run doctor/audit.
+7. Stop with a recommended next step. Do not start application implementation.
+
+An owner request to bootstrap authorizes safe creation of workflow files. It does
+not authorize application implementation while Git, project type, Spec Kit, or
+other required setup decisions remain unresolved.
+
+### Existing-repository flow
+
+For an existing repository, detect the real root, branch, remotes, worktrees,
+platform, CI, project type, workflow files, skills, and Spec Kit state. Preserve
+all owner files. Recommend init/upgrade dry-run when managed files are missing or
+outdated. If setup or planning authority is incomplete, stop with the recommended
+next step before implementation.
 
 ---
 
@@ -254,7 +282,48 @@ specify init . --integration claude
 specify init . --integration codex
 ```
 
-When Spec Kit exists, use: **specify / clarify → plan → tasks → implement → verify → handoff**
+When Spec Kit exists, enforce this production order:
+
+```text
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+```
+
+For Codex skills mode, enforce the equivalent order:
+
+```text
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+```
+
+Do not skip or reorder the first eight steps. Run `converge` after implementation
+when available and needed; otherwise record why it was not applicable. Then verify
+and hand off through project-workflow.
+
+### Authority and anti-drift
+
+- Spec Kit is the source-of-truth authority for every enforced stage when enabled,
+  requested, or detected.
+- Implementation starts only after checklist, tasks, and analyze complete.
+- Guard skills are conditional safety authorities; they do not own planning.
+- Optional executor, build, debug, Superpowers, or similar skills may help execute
+  active tasks but cannot replace any enforced Spec Kit stage.
+- Only an explicit owner override may change this precedence. Record that override in durable project state.
+- If another skill starts planning first, stop safely, preserve work, re-run project-workflow, and resume from the active Spec Kit state.
 
 Do not force Spec Kit onto a tiny throwaway project where it adds no value.
 
@@ -396,6 +465,14 @@ SPEC KIT STATUS
 * Task IDs:
 * Completed:
 * Remaining:
+
+WORKFLOW AUTHORITY STATUS
+
+* Git initialized: Yes/No
+* Empty directory: Yes/No
+* Project type confidence: High/Medium/Low
+* Spec Kit authority: Active/Pending/Not enabled
+* Skill precedence: Enforced/Owner override/Needs repair
 
 VERIFICATION
 

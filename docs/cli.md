@@ -1,61 +1,101 @@
-# CLI
+# CLI reference
 
-`project-workflow` is exposed first as a PowerShell MVP:
+The PowerShell CLI works on Windows PowerShell 5.1 and newer PowerShell hosts.
+Run it from this repository or provide `-TargetPath`.
+
+## Safest first command
+
+Always preview before applying:
 
 ```powershell
-.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -DryRun
-.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -Apply
-.\scripts\project-workflow.ps1 audit
-.\scripts\project-workflow.ps1 doctor
-.\scripts\project-workflow.ps1 upgrade -Apply
-.\scripts\project-workflow.ps1 install-skills -ApprovedOnly
+.\scripts\project-workflow.ps1 init -Type auto -Profile standard -SpecKit -Agents codex,claude-code -DryRun
 ```
 
-`-DryRun` is the safe default for `init` and `upgrade`. Files are written only
-when `-Apply` is passed. `new` creates its new project directory and applies the
-workflow by design.
+`-DryRun` detects state and proposed files without writing. `-SpecKit` is explicit
+approval to attempt setup during apply; omit it when you want the agent to ask.
 
-If `-Type auto` cannot detect a reliable type, `init` stops without writing and prints a recommendation-first question with detected state, recommendation, rationale, alternatives, impact, question, and default.
+After reviewing the preview:
+
+```powershell
+.\scripts\project-workflow.ps1 init -Type auto -Profile standard -SpecKit -Agents codex,claude-code -Apply
+.\scripts\project-workflow.ps1 doctor
+```
+
+If auto-detection is uncertain, `init` stops and prints the explicit type command
+to run next.
 
 ## Commands
 
-- `init`: configures workflow files in an existing project.
-- `new`: creates a new directory, initializes Git, and applies the workflow.
-- `audit`: read-only project readiness report.
-- `doctor`: validates workflow files, managed blocks, lock file, skills, and automatic activation.
-- `upgrade`: previews managed-block and lock updates by default; `upgrade -Apply` writes them.
-- `install-skills`: prints approved install commands from `.ai-skills.json`.
-- `install-skills -ApprovedOnly`: executes only commands marked `install_approved: true` that match the safe `npx -y skills add ...` allowlist; unapproved or unsupported commands remain manual.
+- `init`: add or update workflow files in an existing target. Dry-run by default.
+- `new`: create a named directory and initialize Git; with an explicit type it applies workflow files.
+- `audit`: read-only repository and workflow inspection.
+- `doctor`: validate workflow readiness and report the recommended next action.
+- `upgrade`: refresh valid managed blocks; dry-run by default.
+- `install-skills`: show approval questions or execute only allowlisted, approved commands.
 
-## Safety
+Use `new` when you want a new named starter directory. Use `init` when the target
+folder already exists, including an empty folder.
 
-Existing files without managed blocks are not overwritten. The CLI writes a `.suggested.md` proposal instead. Generated workflow-owned sections use:
+## Greenfield examples
+
+```powershell
+# Existing empty folder: detect Git and type decisions first.
+.\scripts\project-workflow.ps1 init -Type auto -Profile standard -DryRun
+
+# After Git and type decisions are approved.
+.\scripts\project-workflow.ps1 init -Type generic -Profile standard -Apply
+
+# New named React starter directory.
+.\scripts\project-workflow.ps1 new -ProjectName my-app -Type react -Profile standard
+```
+
+## Existing repository examples
+
+```powershell
+.\scripts\project-workflow.ps1 audit
+.\scripts\project-workflow.ps1 init -Type auto -Profile standard -DryRun
+.\scripts\project-workflow.ps1 init -Type auto -Profile standard -Apply
+.\scripts\project-workflow.ps1 doctor -Json
+```
+
+## Explicit project types
+
+Use an explicit type only when detection cannot infer it or you are choosing a
+greenfield archetype:
+
+```powershell
+.\scripts\project-workflow.ps1 init -Type generic -DryRun
+.\scripts\project-workflow.ps1 init -Type php -DryRun
+.\scripts\project-workflow.ps1 init -Type 'js/ts' -DryRun
+.\scripts\project-workflow.ps1 init -Type react -DryRun
+.\scripts\project-workflow.ps1 init -Type laravel -DryRun
+.\scripts\project-workflow.ps1 init -Type python -DryRun
+.\scripts\project-workflow.ps1 init -Type wordpress-site -DryRun
+.\scripts\project-workflow.ps1 init -Type wordpress-plugin -DryRun
+.\scripts\project-workflow.ps1 init -Type wordpress-theme -DryRun
+.\scripts\project-workflow.ps1 init -Type wordpress-block -DryRun
+```
+
+Both `js/ts` and `js-ts` select JavaScript/TypeScript projects. Additional types
+include `vue`, `nextjs`, `dotnet`, `wordpress-bedrock`, and
+`wordpress-woocommerce`.
+
+## File safety
+
+Existing unmanaged files are never overwritten. The CLI writes a
+`.suggested.md` proposal. A managed file must contain exactly one ordered marker
+pair:
 
 ```markdown
 <!-- agent-project-workflow:start -->
 <!-- agent-project-workflow:end -->
 ```
 
-`ManagedStart` and `ManagedEnd` are immutable, non-empty script constants. A
-file is managed only when it contains exactly one start marker followed by
-exactly one end marker. Upgrade replaces that inclusive block and preserves all
-owner text before and after it. Missing, reversed, or duplicate markers are
-treated as unmanaged and produce a suggestion rather than an overwrite.
+Upgrade replaces only that inclusive block and preserves owner content around it.
 
-Recommended next command after initialization:
+## Skill installation
 
-```powershell
-.\scripts\project-workflow.ps1 doctor
-```
-
-Machine-readable doctor output:
-
-```powershell
-.\scripts\project-workflow.ps1 doctor -Json
-```
-
-When `-SpecKit` is requested, the CLI preserves existing `.specify/` state. For a new setup it attempts `specify integration list`, falls back to `specify check` when listing requires an initialized project, initializes the first requested integration, installs additional integrations, and records the exact commands/status in `.agent-workflow.lock.json`.
-
-Generated companion guard commands point to `amElnagdy/guard-skills`, but they
-remain `install_approved: false`. The owner must review and approve that source
-before `install-skills -ApprovedOnly` can execute those commands.
+`install-skills` asks by default. `-ApprovedOnly` executes only entries with
+`install_approved: true` whose commands match the safe
+`npx -y skills add ...` allowlist. Unknown, unapproved, redirected, or chained
+commands remain manual.
