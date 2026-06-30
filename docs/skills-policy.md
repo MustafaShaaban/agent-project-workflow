@@ -1,48 +1,41 @@
-# Skills Policy
+# Skills policy
 
-Skills are separated into build skills and guard skills.
+## Skill precedence and anti-drift policy
 
-Required for every managed project:
+| Authority | Owner | Scope |
+|---|---|---|
+| Startup | project-workflow | Root, Git, branch, platform, project type, setup, verification, handoff |
+| Planning | Spec Kit | Clarify, spec, plan, tasks for non-trivial work |
+| Safety | Guard skills | Conditional code, test, docs, WordPress, and WooCommerce checks |
+| Execution | Optional helpers | Build, debug, or execute active Spec Kit tasks |
 
-- `project-workflow`
+Superpowers and similar workflow skills are optional executor/helpers in managed
+repositories. They may not replace Spec Kit clarify/spec/plan/tasks unless the
+owner explicitly overrides the repository policy. Record an override in durable
+project state so later agents do not guess.
 
-Required for standard, strict, and enterprise profiles:
+## Required and conditional skills
 
-- `clean-code-guard`
-- `test-guard`
-- `docs-guard`
+`project-workflow` is always required. Standard and stricter professional profiles
+require `clean-code-guard`, `test-guard`, and `docs-guard`. `wp-guard` is
+conditional on WordPress detection; `woo-guard` is conditional on WooCommerce.
+WordPress is never mandatory for generic, PHP, JavaScript, React, Laravel,
+Python, or .NET projects.
 
-Required for WordPress:
+## Install modes
 
-- `wp-guard`
+- `ask`: report missing skills and ask before installation. This is the default.
+- `auto-approved-only`: install only entries with a verified command and
+  `install_approved: true`.
+- `never`: do not install; report the missing requirement and next action.
 
-Required for WooCommerce:
+No skill is silently installed unless both repository configuration and owner
+approval allow it. An install command in `.ai-skills.json` is documentation, not
+approval by itself.
 
-- `woo-guard`
+## Approved-only safety
 
-Optional WordPress build skills include plugin development, block development, block themes, REST API, WP-CLI/ops, performance, PHPStan, and Playground skills.
-
-`install-skills -ApprovedOnly` executes documented commands only when `install_approved` is true and the command matches the `npx -y skills add ...` allowlist. Shell operators, redirects, and unsupported commands are rejected. Unknown or unapproved skills remain manual.
-
-## Verified companion package
-
-All five required guard names are real installable skills in
-`amElnagdy/guard-skills`. This was verified with:
-
-```powershell
-npx -y skills add amElnagdy/guard-skills --list
-```
-
-The package reports `clean-code-guard`, `test-guard`, `docs-guard`, `wp-guard`,
-and `woo-guard`. Install an individual guard globally for Codex and Claude Code
-with this pattern:
-
-```powershell
-npx -y skills add amElnagdy/guard-skills --skill wp-guard --global --agent claude-code --agent codex --copy
-```
-
-Generated `.ai-skills.json` files include the corresponding command for each
-guard, but default to `install_approved: false`. The commands are therefore
-documented manual companion installs, not automatic installs. Review the remote
-repository and change that field only when the project owner approves the
-third-party source.
+`install-skills -ApprovedOnly` accepts only allowlisted
+`npx -y skills add ...` commands. It rejects shell operators, redirects, and
+unsupported commands. Companion guard commands default to
+`install_approved: false` until the owner reviews their source.

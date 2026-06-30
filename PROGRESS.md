@@ -16,6 +16,16 @@
 
 ## Recent work
 
+### Greenfield onboarding and workflow authority (2026-06-30)
+
+- Added explicit empty-directory and Git-root detection to init and doctor.
+- Added recommendation-first greenfield handling that stops before writes or implementation when setup decisions are unresolved.
+- Made project-workflow the startup/verification authority and Spec Kit the non-trivial planning authority in templates, generated files, presets, and the installable skill.
+- Added doctor enforcement for missing or drifted Spec Kit and optional-skill precedence policy.
+- Reworked the README and user docs around empty folder, existing repo, audit-only, starter, WordPress, and active Spec Kit scenarios.
+- Added regression coverage for empty non-Git folders, empty Git repos, generic/WordPress conditional policy, Spec Kit state, anti-drift enforcement, JavaScript/TypeScript aliases, presets, and UTF-8 output.
+- Verification: `scripts/test-workflow.ps1` passed with 125 passes, 4 expected missing-YAML-parser warnings, and 0 failures; `git diff --check` passed with line-ending normalization notices only.
+
 ### v0.3.0 production hardening (2026-06-29)
 
 - Made managed block markers immutable non-empty constants and validate exactly one ordered marker pair.

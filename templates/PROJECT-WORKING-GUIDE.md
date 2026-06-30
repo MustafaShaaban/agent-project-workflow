@@ -5,6 +5,15 @@
 
 Run the startup sequence from `AGENTS.md` before planning, editing, writing code, changing docs, running commands, committing, pushing, or merging. State the detected mode: Planning, Implementation, Docs, Design, Debugging, Review, Release, or Bootstrap.
 
+## Authority and precedence
+
+- project-workflow: startup, orchestration, repository safety, verification, and handoff.
+- Spec Kit: clarify, spec, plan, and tasks for non-trivial work.
+- Guard skills: conditional safety checks.
+- Optional executor/build/debug skills: implementation help after active tasks exist.
+
+Do not substitute Superpowers or another planning workflow for Spec Kit unless the owner explicitly changes this decision.
+
 ## Task intake
 
 Classify the task:
@@ -28,6 +37,18 @@ Default if you approve:
 ## Handoff
 
 For real project work, end with SUMMARY, WORKSPACE, MODE, SPEC KIT STATUS, VERIFICATION, BLOCKERS / DECISIONS NEEDED, RECOMMENDED OPTIONS, and NEXT STEP.
+
+Use this final block:
+
+```text
+NEXT STEP
+
+* Just completed:
+* Recommended next:
+* Why:
+* Alternatives:
+* Blockers/decisions needed from you:
+```
 <!-- agent-project-workflow:end -->
 
 ## Project-specific notes

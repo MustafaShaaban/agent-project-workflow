@@ -441,6 +441,93 @@ try {
         Write-Fail "unknown project question missing fields: $($missingQuestionFields -join ', ')"
     }
 
+    $emptyFolderRoot = Join-Path $cliBehaviorRoot 'empty-folder'
+    New-Item -ItemType Directory -Path $emptyFolderRoot -Force | Out-Null
+    $emptyFolderOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        init -TargetPath $emptyFolderRoot -Type auto -DryRun 2>&1 | Out-String
+    if (($emptyFolderOutput -match 'Empty directory: Yes') -and
+        ($emptyFolderOutput -match 'Git initialized: No') -and
+        ($emptyFolderOutput -match 'Question: Initialize Git in this directory before workflow setup\?') -and
+        -not (Test-Path (Join-Path $emptyFolderRoot 'AGENTS.md'))) {
+        Write-Pass 'empty non-Git folder reports state and asks about Git before setup'
+    } else {
+        Write-Fail 'empty non-Git folder must report state, ask about Git, and avoid writes'
+    }
+
+    $emptyGitRoot = Join-Path $cliBehaviorRoot 'empty-git-repo'
+    New-Item -ItemType Directory -Path $emptyGitRoot -Force | Out-Null
+    Push-Location $emptyGitRoot
+    git init 2>$null | Out-Null
+    Pop-Location
+    $emptyGitOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        init -TargetPath $emptyGitRoot -Type auto -DryRun 2>&1 | Out-String
+    if (($emptyGitOutput -match 'Empty directory: Yes') -and
+        ($emptyGitOutput -match 'Git initialized: Yes') -and
+        ($emptyGitOutput -match 'Question: Which project type should be initialized\?')) {
+        Write-Pass 'empty Git repo reports state and asks only for project type'
+    } else {
+        Write-Fail 'empty Git repo must report state and request an explicit project type'
+    }
+
+    $emptyDoctor = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        doctor -TargetPath $emptyFolderRoot -Json 2>$null | ConvertFrom-Json
+    if (($emptyDoctor.empty_directory -eq $true) -and
+        ($emptyDoctor.git_initialized -eq $false) -and
+        ($emptyDoctor.recommended_next -match 'Git')) {
+        Write-Pass 'doctor JSON exposes empty-directory and Git state'
+    } else {
+        Write-Fail 'doctor JSON must expose empty-directory and Git state with a Git-first recommendation'
+    }
+
+    $genericPolicyRoot = Join-Path $cliBehaviorRoot 'generic-authority-policy'
+    New-Item -ItemType Directory -Path $genericPolicyRoot -Force | Out-Null
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        init -TargetPath $genericPolicyRoot -Type generic -Apply 2>&1 | Out-Null
+    $generatedWorkflow = Get-Content (Join-Path $genericPolicyRoot '.ai-workflow.yml') -Raw
+    $generatedSkills = Get-Content (Join-Path $genericPolicyRoot '.ai-skills.json') -Raw | ConvertFrom-Json
+    $generatedAgents = Get-Content (Join-Path $genericPolicyRoot 'AGENTS.md') -Raw
+    $generatedClaude = Get-Content (Join-Path $genericPolicyRoot 'CLAUDE.md') -Raw
+    $generatedGuide = Get-Content (Join-Path $genericPolicyRoot 'PROJECT-WORKING-GUIDE.md') -Raw
+    if (($generatedWorkflow -match 'planning:\s+spec-kit') -and
+        ($generatedWorkflow -match 'require_before_implementation:\s+true') -and
+        ($generatedSkills.authority.planning -eq 'spec-kit') -and
+        ($generatedSkills.authority.optional_executor_skills_may_replace_planning -eq $false) -and
+        ($generatedAgents -match 'Do not use Superpowers or any similar planning workflow') -and
+        ($generatedClaude -match 'must not replace Spec Kit planning') -and
+        ($generatedGuide -match 'must not replace Spec Kit planning')) {
+        Write-Pass 'generated generic workflow enforces Spec Kit and skill precedence'
+    } else {
+        Write-Fail 'generated generic workflow must encode Spec Kit authority and anti-drift policy'
+    }
+
+    if (($generatedSkills.skills.conditional_required.name -contains 'wp-guard') -and
+        -not ($generatedSkills.skills.required.name -contains 'wp-guard')) {
+        Write-Pass 'generic policy keeps WordPress guards conditional'
+    } else {
+        Write-Fail 'generic policy must not require WordPress guards globally'
+    }
+
+    $generatedSkills.authority.optional_executor_skills_may_replace_planning = $true
+    $generatedSkills | ConvertTo-Json -Depth 8 | Set-Content `
+        -LiteralPath (Join-Path $genericPolicyRoot '.ai-skills.json') -Encoding UTF8
+    $driftDoctor = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        doctor -TargetPath $genericPolicyRoot -Json 2>$null | ConvertFrom-Json
+    if (($driftDoctor.blocking -join ' ') -match 'skill precedence') {
+        Write-Pass 'doctor blocks policy that allows optional skills to replace planning'
+    } else {
+        Write-Fail 'doctor must block skill-precedence drift'
+    }
+
+    $jsAliasRoot = Join-Path $cliBehaviorRoot 'js-ts-alias'
+    New-Item -ItemType Directory -Path $jsAliasRoot -Force | Out-Null
+    $jsAliasOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        init -TargetPath $jsAliasRoot -Type 'js/ts' -DryRun 2>&1 | Out-String
+    if (($LASTEXITCODE -eq 0) -and ($jsAliasOutput -match 'Archetype: js-ts')) {
+        Write-Pass 'CLI accepts js/ts as an alias for js-ts'
+    } else {
+        Write-Fail 'CLI must accept the documented js/ts type alias'
+    }
+
     $installRoot = Join-Path $cliBehaviorRoot 'install-skills'
     $shimRoot = Join-Path $installRoot 'bin'
     New-Item -ItemType Directory -Path $shimRoot -Force | Out-Null
@@ -545,6 +632,36 @@ foreach ($preset in $presetNames) {
     } else {
         Write-Fail "preset/$preset missing: $($missingPresetFiles -join ', ')"
     }
+
+    $presetWorkflow = Get-Content (Join-Path $repoRoot "presets\$preset\.ai-workflow.yml") -Raw
+    $presetSkills = Get-Content (Join-Path $repoRoot "presets\$preset\.ai-skills.json") -Raw | ConvertFrom-Json
+    $presetAgents = Get-Content (Join-Path $repoRoot "presets\$preset\AGENTS.md") -Raw
+    if (($presetWorkflow -match 'planning:\s+spec-kit') -and
+        ($presetWorkflow -match 'require_before_implementation:\s+true') -and
+        ($presetSkills.authority.optional_executor_skills_may_replace_planning -eq $false) -and
+        ($presetAgents -match 'must not replace Spec Kit')) {
+        Write-Pass "preset/$preset enforces workflow authority"
+    } else {
+        Write-Fail "preset/$preset must enforce workflow authority"
+    }
+
+    $presetBomFiles = @($presetFiles | Where-Object {
+        $bytes = [System.IO.File]::ReadAllBytes((Join-Path $repoRoot "presets\$preset\$_"))
+        ($bytes.Length -ge 3) -and ($bytes[0] -eq 0xEF) -and ($bytes[1] -eq 0xBB) -and ($bytes[2] -eq 0xBF)
+    })
+    if ($presetBomFiles.Count -eq 0) {
+        Write-Pass "preset/$preset uses UTF-8 without BOM"
+    } else {
+        Write-Fail "preset/$preset contains UTF-8 BOM files: $($presetBomFiles -join ', ')"
+    }
+}
+
+$genericPresetSkills = Get-Content (Join-Path $repoRoot 'presets\generic\.ai-skills.json') -Raw | ConvertFrom-Json
+if (($genericPresetSkills.skills.conditional_required.name -contains 'wp-guard') -and
+    -not ($genericPresetSkills.skills.required.name -contains 'wp-guard')) {
+    Write-Pass 'generic preset keeps WordPress guards conditional'
+} else {
+    Write-Fail 'generic preset must not require WordPress guards globally'
 }
 
 # ─── 10. Doc file sanity ───────────────────────────────────────────────────
@@ -609,6 +726,16 @@ foreach ($fc in $formatChecks) {
 }
 
 $skillPolicy = Get-Content (Join-Path $repoRoot 'templates\.ai-skills.json') -Raw | ConvertFrom-Json
+$workflowPolicy = Get-Content (Join-Path $repoRoot 'templates\.ai-workflow.yml') -Raw
+if (($skillPolicy.authority.startup -eq 'project-workflow') -and
+    ($skillPolicy.authority.planning -eq 'spec-kit') -and
+    ($skillPolicy.authority.optional_executor_skills_may_replace_planning -eq $false) -and
+    ($workflowPolicy -match 'workflow_authority:') -and
+    ($workflowPolicy -match 'require_before_implementation:\s+true')) {
+    Write-Pass 'templates encode workflow authority and Spec Kit enforcement'
+} else {
+    Write-Fail 'templates must encode workflow authority and Spec Kit enforcement'
+}
 $documentedSkills = @($skillPolicy.skills.required) + @($skillPolicy.skills.conditional_required)
 $guardNames = @('clean-code-guard', 'test-guard', 'docs-guard', 'wp-guard', 'woo-guard')
 $invalidGuardPolicies = [System.Collections.Generic.List[string]]::new()

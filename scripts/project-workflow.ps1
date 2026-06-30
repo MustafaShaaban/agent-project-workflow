@@ -16,7 +16,7 @@ param(
 
     [string]$TargetPath = (Get-Location).Path,
     [string]$ProjectName,
-    [ValidateSet('auto', 'generic', 'wordpress', 'wordpress-site', 'wordpress-plugin', 'wordpress-theme', 'wordpress-block', 'wordpress-woocommerce', 'wordpress-bedrock', 'php', 'laravel', 'js-ts', 'react', 'vue', 'nextjs', 'python', 'dotnet', 'unknown')]
+    [ValidateSet('auto', 'generic', 'wordpress', 'wordpress-site', 'wordpress-plugin', 'wordpress-theme', 'wordpress-block', 'wordpress-woocommerce', 'wordpress-bedrock', 'php', 'laravel', 'js-ts', 'js/ts', 'react', 'vue', 'nextjs', 'python', 'dotnet', 'unknown')]
     [string]$Type = 'auto',
     [ValidateSet('minimal', 'standard', 'strict', 'enterprise')]
     [string]$Profile = 'standard',
@@ -66,6 +66,7 @@ function Get-CiStatus {
 
 function Get-Archetype {
     param([string]$Root, [string]$RequestedType)
+    if ($RequestedType -eq 'js/ts') { return 'js-ts' }
     if ($RequestedType -ne 'auto') { return $RequestedType }
     return Get-WfArchetype -ProjectRoot $Root
 }
@@ -285,7 +286,9 @@ function Get-NormalizedAgents {
 }
 
 function Write-InitQuestion {
-    param([string]$Root)
+    param([string]$Root, [bool]$EmptyDirectory, [bool]$GitInitialized)
+    Write-InfoLine "Empty directory: $(if ($EmptyDirectory) { 'Yes' } else { 'No' })"
+    Write-InfoLine "Git initialized: $(if ($GitInitialized) { 'Yes' } else { 'No' })"
     Write-InfoLine 'Detected: No reliable project type or archetype indicators were found.'
     Write-InfoLine 'Recommended: Select `generic` unless this directory is intended for a known framework or WordPress archetype.'
     Write-InfoLine 'Why: Explicit selection prevents the workflow from generating the wrong constitution and required-skill policy.'
@@ -294,6 +297,20 @@ function Write-InitQuestion {
     Write-InfoLine 'Question: Which project type should be initialized?'
     Write-InfoLine 'Default if you approve: generic'
     Write-InfoLine "Recommended next command: .\scripts\project-workflow.ps1 init -TargetPath `"$Root`" -Type generic -Profile standard -DryRun"
+}
+
+function Write-GitInitializationQuestion {
+    param([string]$Root, [bool]$EmptyDirectory)
+    Write-InfoLine "Empty directory: $(if ($EmptyDirectory) { 'Yes' } else { 'No' })"
+    Write-InfoLine 'Git initialized: No'
+    Write-InfoLine 'Detected: The target is not the root of a Git repository.'
+    Write-InfoLine 'Recommended: Initialize Git before creating durable workflow files.'
+    Write-InfoLine 'Why: Repository-local instructions, history, branch safety, and later audits depend on a clear Git root.'
+    Write-InfoLine 'Alternatives: Continue with an explicit project type to create workflow files without Git, or use `new` for a new starter.'
+    Write-InfoLine 'Impact: No files are changed until you choose a path.'
+    Write-InfoLine 'Question: Initialize Git in this directory before workflow setup?'
+    Write-InfoLine 'Default if you approve: Run `git init`, then preview workflow initialization.'
+    Write-InfoLine "Recommended next commands: git -C `"$Root`" init; .\scripts\project-workflow.ps1 init -TargetPath `"$Root`" -Type generic -Profile standard -DryRun"
 }
 
 function Invoke-SpecKitSetup {
@@ -375,16 +392,24 @@ function Invoke-Init {
     $root = Resolve-TargetRoot -Path $TargetPath
     $applyChanges = $Apply.IsPresent
     if (-not $applyChanges) { $DryRun = $true }
+    $emptyDirectory = Test-WfEmptyDirectory -ProjectRoot $root
+    $gitInitialized = Test-WfGitRoot -ProjectRoot $root
     $archetype = if ($Bundle) { ($Bundle -replace '-standard$','' -replace '-strict$','') } else { Get-Archetype -Root $root -RequestedType $Type }
     if ($Bundle -match 'strict') { $script:Profile = 'strict' }
     if (($Type -eq 'auto') -and ($archetype -eq 'unknown')) {
-        Write-InitQuestion -Root $root
+        if (-not $gitInitialized) {
+            Write-GitInitializationQuestion -Root $root -EmptyDirectory $emptyDirectory
+        } else {
+            Write-InitQuestion -Root $root -EmptyDirectory $emptyDirectory -GitInitialized $gitInitialized
+        }
         return
     }
 
     Write-InfoLine "project-workflow init"
     Write-InfoLine "Target: $root"
     Write-InfoLine "Mode: $(if ($applyChanges) { 'APPLY' } else { 'DRY-RUN' })"
+    Write-InfoLine "Empty directory: $(if ($emptyDirectory) { 'Yes' } else { 'No' })"
+    Write-InfoLine "Git initialized: $(if ($gitInitialized) { 'Yes' } else { 'No' })"
     Write-InfoLine "Archetype: $archetype"
     Write-InfoLine "Profile: $Profile"
 
@@ -406,10 +431,20 @@ $startup
 - Preserve user changes and never rewrite history.
 - Do not edit generated, vendor, build, cache, or upload directories unless the owner explicitly requires it.
 - Use Spec Kit for non-trivial, multi-file, security, API, database, CI/CD, WordPress production, and WooCommerce work.
+- Spec Kit owns clarify, spec, plan, and tasks when enabled, requested, or detected.
+- Do not use Superpowers or any similar planning workflow to replace Spec Kit unless the owner explicitly overrides this repository policy.
+- Optional executor, build, and debug skills may help only after active Spec Kit tasks exist.
 - Keep `PROGRESS.md` and `DECISIONS.md` current when progress or durable decisions change.
 "@
     Set-WorkflowFile -Root $root -RelativePath 'AGENTS.md' -Content (New-ManagedDocument -Title 'Agent Instructions' -Body $agentsBody) -ApplyChanges $applyChanges -Generated $generated -Suggested $suggested -Skipped $skipped
-    Set-WorkflowFile -Root $root -RelativePath 'CLAUDE.md' -Content (New-ManagedDocument -Title 'Claude Code Entry Point' -Body "Read `AGENTS.md`, `.ai-workflow.yml`, `.ai-skills.json`, `.agent-workflow.lock.json`, and `PROJECT-WORKING-GUIDE.md`. $startup") -ApplyChanges $applyChanges -Generated $generated -Suggested $suggested -Skipped $skipped
+    $claudeBody = @"
+Read `AGENTS.md`, `.ai-workflow.yml`, `.ai-skills.json`, `.agent-workflow.lock.json`, and `PROJECT-WORKING-GUIDE.md`.
+
+Project-workflow owns startup and verification. Spec Kit owns clarify/spec/plan/tasks for non-trivial work. Optional executor, build, debug, Superpowers, or similar skills must not replace Spec Kit planning unless the owner explicitly overrides repository policy.
+
+$startup
+"@
+    Set-WorkflowFile -Root $root -RelativePath 'CLAUDE.md' -Content (New-ManagedDocument -Title 'Claude Code Entry Point' -Body $claudeBody) -ApplyChanges $applyChanges -Generated $generated -Suggested $suggested -Skipped $skipped
     Set-WorkflowFile -Root $root -RelativePath 'PROJECT-WORKING-GUIDE.md' -Content (New-ManagedDocument -Title 'Project Working Guide' -Body (Get-WorkingGuideBody)) -ApplyChanges $applyChanges -Generated $generated -Suggested $suggested -Skipped $skipped
     Set-WorkflowFile -Root $root -RelativePath 'specs\constitution.md' -Content (New-ManagedDocument -Title 'Project Constitution' -Body $constitutionBody) -ApplyChanges $applyChanges -Generated $generated -Suggested $suggested -Skipped $skipped
     Set-WorkflowFile -Root $root -RelativePath '.ai-workflow.yml' -Content (Get-WorkflowConfigTemplate -Archetype $archetype -Profile $Profile) -ApplyChanges $applyChanges -Generated $generated -Suggested $suggested -Skipped $skipped
@@ -451,6 +486,13 @@ workflow:
   archetype: $Archetype
   automatic_activation: true
 
+workflow_authority:
+  startup: project-workflow
+  planning: spec-kit
+  implementation: active-spec-tasks
+  verification: project-workflow
+  optional_executor_skills_may_replace_planning: false
+
 branching:
   strategy: github-flow
   production_branch: main
@@ -458,7 +500,10 @@ branching:
 
 spec_kit:
   enabled: $($SpecKit.IsPresent.ToString().ToLowerInvariant())
+  mode: ask-to-initialize
   use_for_non_trivial_work: true
+  enforce_for_non_trivial_work: true
+  require_before_implementation: true
 
 skills:
   install_mode: ask
@@ -496,8 +541,20 @@ function Get-SkillsJson {
     ([ordered]@{
         version = '1.0'
         install_mode = 'ask'
+        authority = [ordered]@{
+            startup = 'project-workflow'
+            planning = 'spec-kit'
+            safety = 'conditional-guard-skills'
+            implementation = 'active-spec-tasks'
+            optional_executor_skills_may_replace_planning = $false
+            owner_override_required = $true
+        }
         skills = [ordered]@{
             required = $required
+            conditional_required = @(
+                [ordered]@{ name = 'wp-guard'; condition = 'wordpress_detected'; install_approved = $false }
+                [ordered]@{ name = 'woo-guard'; condition = 'woocommerce_detected'; install_approved = $false }
+            )
             optional = $optional
         }
     } | ConvertTo-Json -Depth 8)
@@ -515,6 +572,8 @@ Latest owner instruction wins, then repo instructions, this constitution, active
 - Use one real Git root.
 - Preserve user work.
 - Use Spec Kit before code for non-trivial work.
+- Treat Spec Kit clarify/spec/plan/tasks as the planning source of truth.
+- Do not let optional workflow or executor skills replace Spec Kit planning without an explicit owner override.
 - Run tests and guards before completion.
 - Keep docs synchronized with code.
 - Protect secrets and never expose credentials.
@@ -552,6 +611,12 @@ function Get-WorkingGuideBody {
 ## Start
 
 Run the startup sequence from `AGENTS.md`, classify the task as Tiny, Normal, or High-risk, and state the mode before implementation.
+
+## Authority
+
+Project-workflow owns startup and verification. Spec Kit owns clarify/spec/plan/tasks for non-trivial work. Conditional guards own safety checks. Optional executor, build, debug, Superpowers, or similar skills must not replace Spec Kit planning unless the owner explicitly overrides repository policy.
+
+Do not implement non-trivial work until active Spec Kit tasks exist. In an empty directory or missing Git root, resolve setup decisions, run doctor/audit, and stop with the recommended next step.
 
 ## Task risk
 
@@ -619,6 +684,8 @@ function Invoke-Audit {
 
 function Invoke-Doctor {
     $root = Resolve-TargetRoot -Path $TargetPath
+    $emptyDirectory = Test-WfEmptyDirectory -ProjectRoot $root
+    $gitInitialized = Test-WfGitRoot -ProjectRoot $root
     $detectedArchetype = Get-WfArchetype -ProjectRoot $root
     $archetype = $detectedArchetype
     $profile = 'standard'
@@ -679,16 +746,47 @@ function Invoke-Doctor {
                     $score -= 8
                 }
             }
+            if (($skills.authority.startup -eq 'project-workflow') -and
+                ($skills.authority.planning -eq 'spec-kit') -and
+                ($skills.authority.optional_executor_skills_may_replace_planning -eq $false)) {
+                $passing.Add('skill precedence policy enforced')
+            } else {
+                $blocking.Add('skill precedence policy is missing or allows optional skills to replace planning')
+                $score -= 12
+            }
         } catch {
             $blocking.Add('.ai-skills.json is not parseable')
             $score -= 10
         }
     }
+    $workflowPath = Join-Path $root '.ai-workflow.yml'
+    if (Test-Path $workflowPath) {
+        $workflowPolicy = Get-Content $workflowPath -Raw
+        if (($workflowPolicy -match '(?m)^workflow_authority:\s*$') -and
+            ($workflowPolicy -match '(?m)^\s+planning:\s*spec-kit\s*$') -and
+            ($workflowPolicy -match '(?m)^\s+require_before_implementation:\s*true\s*$')) {
+            $passing.Add('Spec Kit authority policy enforced')
+        } else {
+            $blocking.Add('Spec Kit authority policy missing from .ai-workflow.yml')
+            $score -= 12
+        }
+    }
     if ($score -lt 0) { $score = 0 }
 
-    $recommendedNext = if ($blocking.Count -gt 0) { 'Run project-workflow init --apply or review suggested files.' } else { 'Run project-workflow audit before the next project task.' }
+    $recommendedNext = if (-not $gitInitialized) {
+        'Initialize Git or explicitly choose workflow-only setup, then run project-workflow init -DryRun.'
+    } elseif ($emptyDirectory) {
+        'Choose a project type, then run project-workflow init -Type <type> -DryRun.'
+    } elseif ($blocking.Count -gt 0) {
+        'Run project-workflow init -Apply or review suggested files.'
+    } else {
+        'Run project-workflow audit before the next project task.'
+    }
     if ($Json) {
         [ordered]@{
+            empty_directory = $emptyDirectory
+            git_initialized = $gitInitialized
+            project_type_confidence = if ($archetype -eq 'unknown') { 'low' } else { 'high' }
             score = $score
             status = if ($blocking.Count -gt 0) { 'blocking' } elseif ($warnings.Count -gt 0) { 'warning' } else { 'ready' }
             passing = $passing.ToArray()
@@ -700,6 +798,8 @@ function Invoke-Doctor {
     }
 
     Write-InfoLine "Workflow readiness: $score/100"
+    Write-InfoLine "Empty directory: $(if ($emptyDirectory) { 'Yes' } else { 'No' })"
+    Write-InfoLine "Git initialized: $(if ($gitInitialized) { 'Yes' } else { 'No' })"
     Write-InfoLine 'Passing:'
     foreach ($item in $passing) { Write-InfoLine "  - $item" }
     Write-InfoLine 'Warnings:'
@@ -787,6 +887,6 @@ switch ($Command) {
     'install-skills' { Invoke-InstallSkills }
     default {
         Write-InfoLine 'Usage: project-workflow init|new|audit|doctor|upgrade|install-skills [options]'
-        Write-InfoLine 'Recommended next command: .\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -DryRun'
+        Write-InfoLine 'Recommended next command: .\scripts\project-workflow.ps1 init -Type auto -Profile standard -Agents codex,claude-code -DryRun'
     }
 }

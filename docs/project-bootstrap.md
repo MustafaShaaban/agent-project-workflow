@@ -1,89 +1,82 @@
-# Bootstrap a project
+# Bootstrap and initialization
 
-The templates establish project-owned rules without selecting a language or framework.
+Bootstrap prepares a folder or repository so future agents follow durable,
+repository-local workflow rules. It does not build the application.
 
-## Automated bootstrap (safe mode — skips existing files)
+## Command meanings
 
-From this repository:
+| Command | Use it for | Writes by default? |
+|---|---|---|
+| `bootstrap-project.ps1` | Legacy safe copy of missing workflow files | Yes, but skips existing files |
+| `init` | Initialize workflow files in the current target | No; use `-Apply` |
+| `new` | Create a named starter, initialize Git, and apply workflow after type is explicit | Yes |
+| `audit` | Inspect Git, platform, type, config, and skill readiness | No |
+| `doctor` | Validate generated files, managed blocks, lock state, and next action | No |
+| `upgrade` | Refresh workflow-owned managed blocks | No; use `-Apply` |
+| `install-skills` | Review or install policy-approved skills | No unless `-ApprovedOnly` executes approved commands |
 
-```powershell
-.\scripts\bootstrap-project.ps1 -TargetPath C:\path\to\project
-```
+Use `new` when the directory itself does not exist and you want the tool to
+create a named starter. Use `init` when you are already inside the intended
+folder or repository.
 
-The script creates missing directories and copies:
+## Safe bootstrap behavior
 
-- `AGENTS.md`
-- `CLAUDE.md`
-- `PROJECT-WORKING-GUIDE.md`
-- `PROGRESS.md`
-- `DECISIONS.md`
-- `specs\constitution.md`
+The default workflow is recommendation-first:
 
-Existing files are always skipped in default mode. Add `-IncludeConfig` to also copy `.ai-workflow.yml` and `.ai-skills.json`:
+1. Detect the real root, Git state, project indicators, platform, and CI.
+2. Preview with `-DryRun`.
+3. Preserve every unmanaged owner file.
+4. Write `.suggested.md` when an existing file has no valid managed block.
+5. Ask before Spec Kit initialization or skill installation.
+6. Run `doctor` and stop with the next setup or planning action.
 
-```powershell
-.\scripts\bootstrap-project.ps1 -TargetPath C:\path\to\project -IncludeConfig
-```
+Managed files use exact start/end markers. Upgrade changes only that block;
+project-specific notes before or after it remain untouched.
 
-Use `-Force` only after reviewing existing files and deciding replacement is correct:
+## Empty folder without Git
 
-```powershell
-.\scripts\bootstrap-project.ps1 -TargetPath C:\path\to\project -Force
-```
+`init -Type auto -DryRun` reports `Empty directory: Yes` and
+`Git initialized: No`, asks whether to initialize Git, and writes nothing.
+After Git approval, initialize it and rerun the preview. An explicit full
+bootstrap may create workflow files without Git, but implementation still waits
+until project type and required Spec Kit decisions are resolved.
 
-## Audit mode (observe-only — no file changes)
+## Empty Git repository
 
-See what the bootstrap would do without actually doing it:
+The workflow recognizes `.git` while still reporting the project directory as
+empty. It asks for the archetype because no project files exist. Choose `generic`
+when no framework has been selected.
 
-```powershell
-.\scripts\bootstrap-project.ps1 -TargetPath C:\path\to\project -Mode observe-only
-```
+## Unknown project type
 
-For a full project audit, use the dedicated audit script:
+Auto-detection never guesses. It reports the detected state, recommends
+`generic`, lists alternatives, and provides the exact next command. Choose an
+explicit type only after deciding what the project will be.
 
-```powershell
-.\scripts\audit-project-workflow.ps1 -TargetPath C:\path\to\project
-```
+## Existing repository
 
-## Manual bootstrap
+The workflow detects the Git root, branch, remotes, worktrees, provider, CI,
+project type, workflow files, skills, and Spec Kit status. Existing files are
+preserved. Use `upgrade -DryRun` when managed files need refresh. If setup is
+incomplete, the agent stops before application implementation.
 
-1. Copy `templates\AGENTS.md` to the project root and replace the project-purpose placeholder.
-2. Copy `templates\CLAUDE.md` when the project uses Claude Code.
-3. Copy and adapt `templates\PROJECT-WORKING-GUIDE.md`.
-4. Create `PROGRESS.md` from the starter and record the actual branch and status.
-5. Create `DECISIONS.md` from the starter.
-6. Create `specs\constitution.md` from the generic constitution.
-7. Copy `templates\.ai-workflow.yml` and adjust profile, platform, and branching strategy.
-8. Copy `templates\.ai-skills.json` if you want machine-readable skill requirements.
-9. Commit the workflow files as project-owned documentation.
-
-## After bootstrap
-
-Open each generated file and replace placeholder text (e.g. `[Describe the project's purpose]`)
-with project-specific content before committing. Key files to edit:
-
-- `AGENTS.md` — fill in the project purpose section
-- `PROGRESS.md` — set the actual branch and initial status
-- `.ai-workflow.yml` — set profile, branching strategy, and production branch
-
-## Spec Kit
-
-Bootstrap does not run Spec Kit. First inspect for `.specify`, existing specs, or spec commands.
-Ask the owner before installation or initialization, then run `specify integration list`
-to learn currently supported integration IDs.
-
-## Platform-specific templates
-
-After bootstrap, copy any needed platform templates manually:
+## Examples
 
 ```powershell
-# GitHub
-Copy-Item templates\github\pull_request_template.md .github\pull_request_template.md
-Copy-Item templates\github\CODEOWNERS .github\CODEOWNERS
+# Preview the current folder.
+.\scripts\project-workflow.ps1 init -Type auto -Profile standard -DryRun
 
-# Azure DevOps
-New-Item -ItemType Directory -Force .azuredevops
-Copy-Item templates\azure-devops\pull_request_template.md .azuredevops\pull_request_template.md
+# Apply after reviewing the preview.
+.\scripts\project-workflow.ps1 init -Type generic -Profile standard -Apply
+
+# Read-only checks.
+.\scripts\project-workflow.ps1 audit
+.\scripts\project-workflow.ps1 doctor -Json
+
+# Refresh only managed blocks.
+.\scripts\project-workflow.ps1 upgrade -DryRun
+.\scripts\project-workflow.ps1 upgrade -Apply
+
+# Create a named starter.
+.\scripts\project-workflow.ps1 new -ProjectName my-app -Type react -Profile standard
 ```
-
-See [docs/github.md](github.md) and [docs/azure-devops.md](azure-devops.md) for platform-specific setup.

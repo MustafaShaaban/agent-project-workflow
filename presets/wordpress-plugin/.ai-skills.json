@@ -1,6 +1,14 @@
 {
     "version":  "1.0",
     "install_mode":  "ask",
+    "authority":  {
+                      "startup":  "project-workflow",
+                      "planning":  "spec-kit",
+                      "safety":  "conditional-guard-skills",
+                      "implementation":  "active-spec-tasks",
+                      "optional_executor_skills_may_replace_planning":  false,
+                      "owner_override_required":  true
+                  },
     "skills":  {
                    "required":  [
                                     {
@@ -29,6 +37,18 @@
                                         "install_command":  "npx -y skills add amElnagdy/guard-skills --skill wp-guard --global --agent claude-code --agent codex --copy"
                                     }
                                 ],
+                   "conditional_required":  [
+                                                {
+                                                    "name":  "wp-guard",
+                                                    "condition":  "wordpress_detected",
+                                                    "install_approved":  false
+                                                },
+                                                {
+                                                    "name":  "woo-guard",
+                                                    "condition":  "woocommerce_detected",
+                                                    "install_approved":  false
+                                                }
+                                            ],
                    "optional":  [
                                     "wp-plugin-development",
                                     "wp-block-development",

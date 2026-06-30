@@ -5,6 +5,88 @@ It provides the global `project-workflow` skill, workflow profiles, platform
 adapters, guard scripts, PR templates, and project starter templates that work
 with any Git repository—including GitHub and Azure DevOps projects.
 
+## Start here
+
+> **Recommended first prompt**
+>
+> `Use project-workflow to inspect this folder, recommend the safe setup path,
+> preserve existing files, ask before Git or Spec Kit initialization, and stop
+> after doctor/audit with the next step. Do not implement the project yet.`
+
+Choose the scenario that matches what you have.
+
+### A. Empty folder or greenfield project
+
+Codex:
+
+```text
+Use project-workflow to bootstrap this empty folder with the standard workflow.
+Ask whether to initialize Git, ask for project type only if it cannot be inferred,
+preserve files, ask before Spec Kit init, run doctor/audit, and stop before implementation.
+```
+
+Claude Code:
+
+```text
+Use the project-workflow skill for this empty folder. Detect Git and project state,
+ask for unresolved setup decisions, create only approved workflow files, ask before
+Spec Kit init, run doctor/audit, and stop with the next step.
+```
+
+### B. Existing repository
+
+Codex:
+
+```text
+Use project-workflow to audit and initialize this existing repo safely. Detect Git,
+branch, remotes, worktrees, platform, CI, project type, workflow files, skills, and
+Spec Kit. Preview first, preserve owner files, and stop if setup is incomplete.
+```
+
+Claude Code:
+
+```text
+Use the project-workflow skill to inspect this existing repository. Preserve all
+owner files, recommend dry-run or upgrade where needed, and do not implement until
+workflow and Spec Kit decisions are complete.
+```
+
+### C. Audit only
+
+Codex:
+
+```text
+Use project-workflow in observe-only mode. Report repository and workflow readiness,
+Spec Kit status, skill authority, and the next action. Do not change files.
+```
+
+Claude Code:
+
+```text
+Use the project-workflow skill for a read-only audit. Make no file, tool, Git,
+commit, or push changes.
+```
+
+### D. Continue existing Spec Kit work
+
+Codex:
+
+```text
+Use project-workflow to continue the active Spec Kit work. Read the constitution,
+spec, plan, tasks, progress, and decisions; report the next incomplete task first.
+```
+
+Claude Code:
+
+```text
+Use the project-workflow skill for startup and Spec Kit as the planning source of
+truth. Continue the next active task and preserve unrelated changes.
+```
+
+After successful initialization, future Codex and Claude sessions should read
+`AGENTS.md` or `CLAUDE.md` automatically. You normally do not need to repeat the
+startup prompt.
+
 ## What it does
 
 - Gives AI agents (Claude Code, Codex) a safe, consistent startup routine for
@@ -18,7 +100,7 @@ with any Git repository—including GitHub and Azure DevOps projects.
 - Produces structured handoffs with platform, project type, skills status,
   and next steps
 
-## What it does NOT do
+## What not to expect
 
 - It does not own your application architecture, framework, or language choices
 - It does not force a branching strategy unless you configure one
@@ -28,6 +110,8 @@ with any Git repository—including GitHub and Azure DevOps projects.
 - It does not push to GitHub or Azure DevOps without explicit instruction
 - It does not install missing skills silently (always asks unless configuration
   allows it)
+- It does not let Superpowers or another optional skill replace Spec Kit planning
+  unless the owner explicitly overrides the repository policy
 
 ## Quick install
 
@@ -47,21 +131,31 @@ Without a local clone:
 npx -y skills add MustafaShaaban/agent-project-workflow --skill project-workflow --global --agent claude-code --agent codex --copy
 ```
 
-## Quick usage
+## Quick CLI usage
 
-Initialize an existing WordPress project safely:
+Preview initialization first:
 
 ```powershell
-.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -DryRun
-.\scripts\project-workflow.ps1 init -Type wordpress-site -Profile standard -SpecKit -Agents codex,claude-code -Apply
+.\scripts\project-workflow.ps1 init -Type auto -Profile standard -SpecKit -Agents codex,claude-code -DryRun
 ```
 
-After `init -Apply`, supported agents follow the repo-local workflow automatically from `AGENTS.md`, `CLAUDE.md`, and `PROJECT-WORKING-GUIDE.md`; you should not need to repeat "use project-workflow" in normal work.
+Apply only after reviewing the preview:
+
+```powershell
+.\scripts\project-workflow.ps1 init -Type auto -Profile standard -SpecKit -Agents codex,claude-code -Apply
+.\scripts\project-workflow.ps1 doctor
+```
+
+If auto-detection is uncertain, the CLI stops without writing and recommends an
+explicit type. WordPress is one supported archetype, not the default.
+
+After `init -Apply`, supported agents follow the repo-local workflow automatically
+from `AGENTS.md`, `CLAUDE.md`, and `PROJECT-WORKING-GUIDE.md`.
 
 Create a new project starter:
 
 ```powershell
-.\scripts\project-workflow.ps1 new -ProjectName my-wordpress-site -Type wordpress-site -Profile standard -SpecKit
+.\scripts\project-workflow.ps1 new -ProjectName my-app -Type react -Profile standard -SpecKit
 ```
 
 Audit and validate an existing project:

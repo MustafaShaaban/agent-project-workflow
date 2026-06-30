@@ -23,7 +23,9 @@ function Set-GeneratedFile {
     param([string]$Path, [string]$Content)
     $directory = Split-Path -Parent $Path
     if (-not (Test-Path $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
-    Set-Content -LiteralPath $Path -Value $Content -Encoding UTF8
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    $normalizedContent = $Content.TrimEnd("`r", "`n") + "`n"
+    [System.IO.File]::WriteAllText($Path, $normalizedContent, $utf8NoBom)
 }
 
 function Get-InstallCommand {
@@ -48,6 +50,14 @@ foreach ($preset in $presets) {
     $skillsJson = [ordered]@{
         version = '1.0'
         install_mode = 'ask'
+        authority = [ordered]@{
+            startup = 'project-workflow'
+            planning = 'spec-kit'
+            safety = 'conditional-guard-skills'
+            implementation = 'active-spec-tasks'
+            optional_executor_skills_may_replace_planning = $false
+            owner_override_required = $true
+        }
         skills = [ordered]@{
             required = @($requiredSkills | ForEach-Object {
                 [ordered]@{
@@ -56,6 +66,10 @@ foreach ($preset in $presets) {
                     install_command = Get-InstallCommand -SkillName $_
                 }
             })
+            conditional_required = @(
+                [ordered]@{ name = 'wp-guard'; condition = 'wordpress_detected'; install_approved = $false }
+                [ordered]@{ name = 'woo-guard'; condition = 'woocommerce_detected'; install_approved = $false }
+            )
             optional = if ($preset.wordpress) { @('wp-plugin-development', 'wp-block-development', 'wp-performance', 'wp-phpstan', 'wp-playground') } else { @() }
         }
     } | ConvertTo-Json -Depth 8
@@ -66,12 +80,21 @@ workflow:
   profile: standard
   archetype: $($preset.name)
   automatic_activation: true
+workflow_authority:
+  startup: project-workflow
+  planning: spec-kit
+  implementation: active-spec-tasks
+  verification: project-workflow
+  optional_executor_skills_may_replace_planning: false
 branching:
   strategy: github-flow
   production_branch: main
 spec_kit:
   enabled: true
+  mode: ask-to-initialize
   use_for_non_trivial_work: true
+  enforce_for_non_trivial_work: true
+  require_before_implementation: true
 skills:
   install_mode: ask
 safety:
@@ -87,6 +110,8 @@ $managedStart
 For every project request, even if the user does not mention `project-workflow`, automatically follow the startup sequence in `PROJECT-WORKING-GUIDE.md` before planning, editing, running commands, committing, pushing, or merging.
 
 Use one real Git root, preserve user work, protect generated/vendor/build/cache/upload paths, use Spec Kit for non-trivial work, update progress/decisions, run guards, and end with mandatory NEXT STEP.
+
+Project-workflow owns startup and verification. Spec Kit owns clarify/spec/plan/tasks. Guard skills own conditional safety. Optional executor, build, debug, Superpowers, or similar skills must not replace Spec Kit planning unless the owner explicitly overrides this policy. Do not implement non-trivial work before active Spec Kit tasks exist.
 $managedEnd
 
 ## Project-specific notes
@@ -96,7 +121,7 @@ $managedEnd
 # Claude Code Entry Point
 
 $managedStart
-Read `AGENTS.md`, `.ai-workflow.yml`, `.ai-skills.json`, `.agent-workflow.lock.json`, and `PROJECT-WORKING-GUIDE.md`. Automatically follow project-workflow for every request.
+Read `AGENTS.md`, `.ai-workflow.yml`, `.ai-skills.json`, `.agent-workflow.lock.json`, and `PROJECT-WORKING-GUIDE.md`. Automatically follow project-workflow for every request. Use Spec Kit as the non-trivial planning authority; optional skills must not replace it.
 $managedEnd
 
 ## Project-specific notes
@@ -108,7 +133,7 @@ $managedEnd
 $managedStart
 Resolve the real root; inspect status, branch, remotes, and worktrees; detect platform, CI, and archetype; read workflow, lock, instruction, progress, decision, constitution, and active-spec files; state mode and recommended next step.
 
-Classify tasks as Tiny, Normal, or High-risk. High-risk work requires Spec Kit and recommendation-first clarification.
+Classify tasks as Tiny, Normal, or High-risk. Non-trivial work requires Spec Kit clarify/spec/plan/tasks before implementation. Optional executor skills may help only after active tasks exist.
 $managedEnd
 
 ## Project-specific notes

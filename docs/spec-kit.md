@@ -1,28 +1,67 @@
-# Spec Kit relationship
+# Spec Kit authority and enforcement
 
-The parts have distinct responsibilities:
+Project-workflow and Spec Kit have separate jobs:
 
-- The global `project-workflow` skill is a generic startup, safety, verification, memory, and handoff routine.
-- Project repository files are the law for that project and override the global routine.
-- Spec Kit provides a structured specify/clarify, plan, tasks, implement, and verify workflow.
+- project-workflow owns startup, repository detection, safety, verification, and handoff.
+- Spec Kit owns clarify, spec, plan, and tasks for non-trivial work.
+- Guard skills enforce conditional safety rules.
+- Optional executor/build/debug skills help only after active Spec Kit tasks exist.
 
-When Spec Kit is present, use it before implementation and reflect active paths and task IDs in `PROGRESS.md` and handoffs. When it is absent, ask before installing or initializing it. Do not silently change project tooling.
+For non-trivial work, implementation begins only after Spec Kit has produced
+tasks. Superpowers or any similar workflow skill cannot replace Spec Kit
+planning unless the project owner explicitly overrides that policy.
 
-The initializer records one of these lock states: `disabled`, `requested-unavailable`, `existing-preserved`, `available-dry-run`, `initialized`, or `available-no-matching-integration`.
+## Missing Spec Kit
 
-For new setup, it runs `specify integration list` first. Some Spec Kit versions require an initialized project for that command; in that case the initializer records the failed attempt, runs `specify check`, then uses the explicitly requested integration IDs. The first integration uses `specify init --here --force`; additional integrations use `specify integration install --force`.
+Missing tooling triggers an ask, not an install. The agent should report whether
+`.specify/`, the constitution, active specs, and the `specify` command exist. It
+must explain the recommended initialization command and wait for approval.
 
-Check current integrations before assuming identifiers:
+The initializer records states such as `disabled`, `requested-unavailable`,
+`existing-preserved`, `available-dry-run`, and `initialized` in the lock file.
+Existing `.specify/` state is preserved.
+
+## Initialize Spec Kit
+
+```text
+Use project-workflow to verify this repo is ready for planning. Ask for my approval
+before initializing Spec Kit for Codex and Claude Code. Do not install or change
+tooling silently, and do not implement anything yet.
+```
+
+After approval, check current integration identifiers:
 
 ```powershell
 specify integration list
 ```
 
-Depending on that output, initialization may use:
+The appropriate installed Spec Kit version may then support integrations such as
+`codex` or `claude`.
 
-```powershell
-specify init . --integration claude
-specify init . --integration codex
+## Create the first spec
+
+```text
+Use project-workflow for startup and Spec Kit for planning. Clarify this feature,
+then create its spec, plan, and tasks. Stop before implementation and show me the
+active spec path and next task.
 ```
 
-Spec Kit is useful for durable, multi-step feature work. Do not force it into tiny throwaway experiments where the planning overhead has no practical value.
+## Continue an active spec
+
+```text
+Use project-workflow to continue the active Spec Kit work. Read the constitution,
+spec, plan, tasks, PROGRESS.md, and DECISIONS.md. Report the next incomplete task,
+then implement only that task.
+```
+
+## Recover from the wrong skill
+
+```text
+Stop the current planning workflow. Use project-workflow to re-check the repo and
+preserve existing work. Spec Kit is the planning authority: reconcile any useful
+notes into the active Spec Kit spec/plan/tasks, do not let Superpowers or another
+skill replace them, and wait before implementation if tasks are missing.
+```
+
+Tiny throwaway work may explicitly use a minimal workflow without Spec Kit. That
+is an owner decision, not an optional skill's decision.
