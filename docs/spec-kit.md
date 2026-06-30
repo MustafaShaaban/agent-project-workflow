@@ -3,13 +3,49 @@
 Project-workflow and Spec Kit have separate jobs:
 
 - project-workflow owns startup, repository detection, safety, verification, and handoff.
-- Spec Kit owns clarify, spec, plan, and tasks for non-trivial work.
+- Spec Kit owns constitution, specify, clarify, plan, checklist, tasks, analyze,
+  implement, and conditional converge for non-trivial work.
 - Guard skills enforce conditional safety rules.
 - Optional executor/build/debug skills help only after active Spec Kit tasks exist.
 
-For non-trivial work, implementation begins only after Spec Kit has produced
-tasks. Superpowers or any similar workflow skill cannot replace Spec Kit
+For non-trivial work, implementation begins only after Spec Kit checklist, tasks,
+and analyze stages complete. Superpowers or any similar workflow skill cannot replace Spec Kit
 planning unless the project owner explicitly overrides that policy.
+
+## Exact enforced Spec Kit order
+
+The production command order is:
+
+```text
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+```
+
+For Codex skills mode, use:
+
+```text
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+```
+
+Do not skip or reorder the first eight steps. Run `converge` after implementation
+when it is available and the work needs convergence; otherwise record that it was
+not available or not needed. Optional executor skills can assist only within the
+active implementation tasks.
 
 ## Missing Spec Kit
 
@@ -41,17 +77,17 @@ The appropriate installed Spec Kit version may then support integrations such as
 ## Create the first spec
 
 ```text
-Use project-workflow for startup and Spec Kit for planning. Clarify this feature,
-then create its spec, plan, and tasks. Stop before implementation and show me the
-active spec path and next task.
+Use project-workflow for startup and Spec Kit for planning. Follow the exact
+enforced order for this feature from constitution through analyze. Stop before
+implementation and show me the active spec path and next stage.
 ```
 
 ## Continue an active spec
 
 ```text
 Use project-workflow to continue the active Spec Kit work. Read the constitution,
-spec, plan, tasks, PROGRESS.md, and DECISIONS.md. Report the next incomplete task,
-then implement only that task.
+spec, clarification, plan, checklist, tasks, analysis, PROGRESS.md, and DECISIONS.md.
+Report the next incomplete stage and implement only after analyze passes.
 ```
 
 ## Recover from the wrong skill
@@ -59,8 +95,8 @@ then implement only that task.
 ```text
 Stop the current planning workflow. Use project-workflow to re-check the repo and
 preserve existing work. Spec Kit is the planning authority: reconcile any useful
-notes into the active Spec Kit spec/plan/tasks, do not let Superpowers or another
-skill replace them, and wait before implementation if tasks are missing.
+notes into the active Spec Kit stages, do not let Superpowers or another skill
+replace them, and wait before implementation if checklist, tasks, or analyze is missing.
 ```
 
 Tiny throwaway work may explicitly use a minimal workflow without Spec Kit. That

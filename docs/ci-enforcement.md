@@ -7,7 +7,10 @@ CI should run read-only workflow checks first:
 .\scripts\project-workflow.ps1 doctor -Ci
 ```
 
-GitHub Actions and Azure DevOps templates can call the PowerShell MVP before project-specific tests. CI should fail on doctor blocking items and surface warnings for missing optional skills or missing YAML parser validation.
+GitHub Actions and Azure DevOps templates can call the PowerShell MVP before
+project-specific tests. CI must fail on doctor blocking items, invalid workflow
+YAML, or a missing YAML parser. Missing optional skills may remain warnings when
+the active profile permits them.
 
 Minimum CI expectations:
 

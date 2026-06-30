@@ -60,6 +60,18 @@ function Write-Section {
     Write-Host "`n=== $Title ===" -ForegroundColor Cyan
 }
 
+function Test-OrderedTokens {
+    param([string]$Content, [string[]]$Tokens)
+
+    $searchFrom = 0
+    foreach ($token in $Tokens) {
+        $tokenIndex = $Content.IndexOf($token, $searchFrom, [System.StringComparison]::Ordinal)
+        if ($tokenIndex -lt 0) { return $false }
+        $searchFrom = $tokenIndex + $token.Length
+    }
+    return $true
+}
+
 Write-Host "`n================================================" -ForegroundColor Cyan
 Write-Host " agent-project-workflow Self-Test" -ForegroundColor Cyan
 Write-Host " Repo root: $repoRoot" -ForegroundColor Cyan
@@ -87,12 +99,18 @@ $jsonFiles = @(
     'templates\.ai-skills.json'
     'tests\fixtures\generic-github-flow\package.json'
 )
+$jsonFiles += @(Get-ChildItem (Join-Path $repoRoot 'presets') -Filter '.ai-skills.json' -Recurse |
+    ForEach-Object { $_.FullName.Substring($repoRoot.Length + 1) })
 foreach ($rel in $jsonFiles) {
     $path = Join-Path $repoRoot $rel
     if (-not (Test-Path $path)) { Write-Warn "$rel not found"; continue }
     try {
         $null = Get-Content $path -Raw | ConvertFrom-Json
-        Write-Pass "$rel"
+        if (($rel -like '*\.ai-skills.json') -and (@(Get-Content $path).Count -lt 20)) {
+            Write-Fail "$rel`: valid JSON but not readable pretty-printed policy"
+        } else {
+            Write-Pass "$rel"
+        }
     } catch {
         Write-Fail "$rel`: $($_.Exception.Message)"
     }
@@ -109,36 +127,92 @@ if (Get-Module -ListAvailable -Name 'powershell-yaml' -ErrorAction SilentlyConti
 if (-not $yamlParser -and (Get-Module -ListAvailable -Name 'PSYaml' -ErrorAction SilentlyContinue)) {
     try { Import-Module PSYaml -ErrorAction Stop; $yamlParser = 'PSYaml' } catch { }
 }
+if (-not $yamlParser) {
+    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+    if ($pythonCommand) {
+        $previousErrorPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            & $pythonCommand.Source -c "import yaml" 2>$null
+            if ($LASTEXITCODE -eq 0) { $yamlParser = 'python-pyyaml' }
+        } finally {
+            $ErrorActionPreference = $previousErrorPreference
+        }
+    }
+}
 if ($yamlParser) {
     Write-Info "Using YAML parser: $yamlParser"
 } else {
-    Write-Info "No YAML parser module installed (powershell-yaml / PSYaml). YAML files reported as WARN, not PASS."
+    Write-Fail 'No real YAML parser is available for user-facing workflow files.'
 }
 
-$yamlFiles = @(
-    'templates\.ai-workflow.yml'
-    'tests\fixtures\generic-github-flow\.ai-workflow.yml'
-    'tests\fixtures\git-flow\.ai-workflow.yml'
-    'tests\fixtures\wordpress\.ai-workflow.yml'
-)
+$yamlRoots = @('templates', 'presets', 'tests\fixtures', '.github')
+$yamlFiles = @($yamlRoots | ForEach-Object {
+    Get-ChildItem (Join-Path $repoRoot $_) -File -Recurse -Include '*.yml', '*.yaml' |
+        ForEach-Object { $_.FullName.Substring($repoRoot.Length + 1) }
+} | Select-Object -Unique)
 foreach ($rel in $yamlFiles) {
     $path = Join-Path $repoRoot $rel
     if (-not (Test-Path $path)) { Write-Warn "$rel not found"; continue }
     $content = Get-Content $path -Raw
     if ($yamlParser) {
         try {
-            $null = ConvertFrom-Yaml $content
+            if ($yamlParser -eq 'python-pyyaml') {
+                $parserOutput = & $pythonCommand.Source -c `
+                    "import sys, yaml; yaml.safe_load(open(sys.argv[1], encoding='utf-8'))" $path 2>&1
+                if ($LASTEXITCODE -ne 0) { throw ($parserOutput | Out-String) }
+            } else {
+                $null = ConvertFrom-Yaml $content
+            }
             Write-Pass "$rel (parsed with $yamlParser)"
         } catch {
             Write-Fail "$rel`: YAML parse error - $($_.Exception.Message)"
         }
     } else {
-        # No real parser available: do a structural smoke check but only WARN.
-        if ($content -match '(?m)^\s*(profile|project)\s*:') {
-            Write-Warn "$rel`: no YAML parser installed - structural check only, not validated (install powershell-yaml for real parsing)"
-        } else {
-            Write-Fail "$rel`: missing expected top-level keys (profile: / project:)"
-        }
+        Write-Fail "$rel`: not parsed because no real YAML parser is available"
+    }
+}
+
+$specKitCommandOrder = @(
+    '/speckit.constitution',
+    '/speckit.specify',
+    '/speckit.clarify',
+    '/speckit.plan',
+    '/speckit.checklist',
+    '/speckit.tasks',
+    '/speckit.analyze',
+    '/speckit.implement',
+    '/speckit.converge'
+)
+$specKitSkillOrder = @(
+    '$speckit-constitution',
+    '$speckit-specify',
+    '$speckit-clarify',
+    '$speckit-plan',
+    '$speckit-checklist',
+    '$speckit-tasks',
+    '$speckit-analyze',
+    '$speckit-implement',
+    '$speckit-converge'
+)
+$specKitPolicyFiles = @(
+    'README.md',
+    'docs\usage.md',
+    'docs\skills-policy.md',
+    'docs\spec-kit.md',
+    'templates\AGENTS.md',
+    'templates\CLAUDE.md',
+    'templates\PROJECT-WORKING-GUIDE.md',
+    'templates\.ai-workflow.yml',
+    'templates\.ai-skills.json'
+)
+foreach ($relativePath in $specKitPolicyFiles) {
+    $policyContent = Get-Content (Join-Path $repoRoot $relativePath) -Raw
+    if ((Test-OrderedTokens -Content $policyContent -Tokens $specKitCommandOrder) -and
+        (Test-OrderedTokens -Content $policyContent -Tokens $specKitSkillOrder)) {
+        Write-Pass "$relativePath contains both exact Spec Kit orders"
+    } else {
+        Write-Fail "$relativePath must contain command and Codex skills-mode Spec Kit orders"
     }
 }
 
@@ -484,17 +558,46 @@ try {
     & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
         init -TargetPath $genericPolicyRoot -Type generic -Apply 2>&1 | Out-Null
     $generatedWorkflow = Get-Content (Join-Path $genericPolicyRoot '.ai-workflow.yml') -Raw
-    $generatedSkills = Get-Content (Join-Path $genericPolicyRoot '.ai-skills.json') -Raw | ConvertFrom-Json
+    $generatedSkillsText = Get-Content (Join-Path $genericPolicyRoot '.ai-skills.json') -Raw
+    $generatedSkills = $generatedSkillsText | ConvertFrom-Json
     $generatedAgents = Get-Content (Join-Path $genericPolicyRoot 'AGENTS.md') -Raw
     $generatedClaude = Get-Content (Join-Path $genericPolicyRoot 'CLAUDE.md') -Raw
     $generatedGuide = Get-Content (Join-Path $genericPolicyRoot 'PROJECT-WORKING-GUIDE.md') -Raw
+    $generatedOrderDocuments = @(
+        $generatedWorkflow,
+        $generatedSkillsText,
+        $generatedAgents,
+        $generatedClaude,
+        $generatedGuide
+    )
+    $generatedOrdersValid = @($generatedOrderDocuments | Where-Object {
+        -not (Test-OrderedTokens -Content $_ -Tokens $specKitCommandOrder) -or
+        -not (Test-OrderedTokens -Content $_ -Tokens $specKitSkillOrder)
+    }).Count -eq 0
+    $generatedYamlValid = $false
+    try {
+        if ($yamlParser -eq 'python-pyyaml') {
+            & $pythonCommand.Source -c `
+                "import sys, yaml; yaml.safe_load(open(sys.argv[1], encoding='utf-8'))" `
+                (Join-Path $genericPolicyRoot '.ai-workflow.yml') 2>&1 | Out-Null
+            $generatedYamlValid = $LASTEXITCODE -eq 0
+        } else {
+            $null = ConvertFrom-Yaml $generatedWorkflow
+            $generatedYamlValid = $true
+        }
+    } catch {
+        $generatedYamlValid = $false
+    }
     if (($generatedWorkflow -match 'planning:\s+spec-kit') -and
         ($generatedWorkflow -match 'require_before_implementation:\s+true') -and
         ($generatedSkills.authority.planning -eq 'spec-kit') -and
+        ($generatedSkills.authority.implementation -eq 'after-speckit-analyze') -and
         ($generatedSkills.authority.optional_executor_skills_may_replace_planning -eq $false) -and
         ($generatedAgents -match 'Do not use Superpowers or any similar planning workflow') -and
-        ($generatedClaude -match 'must not replace Spec Kit planning') -and
-        ($generatedGuide -match 'must not replace Spec Kit planning')) {
+        ($generatedClaude -match 'must not replace Spec Kit') -and
+        ($generatedGuide -match 'must not replace Spec Kit') -and
+        $generatedOrdersValid -and
+        $generatedYamlValid) {
         Write-Pass 'generated generic workflow enforces Spec Kit and skill precedence'
     } else {
         Write-Fail 'generated generic workflow must encode Spec Kit authority and anti-drift policy'
@@ -506,6 +609,18 @@ try {
     } else {
         Write-Fail 'generic policy must not require WordPress guards globally'
     }
+
+    $workflowPolicyPath = Join-Path $genericPolicyRoot '.ai-workflow.yml'
+    $driftedWorkflow = $generatedWorkflow.Replace('    - "/speckit.checklist"', '    - "/speckit.tasks"')
+    Set-Content -LiteralPath $workflowPolicyPath -Value $driftedWorkflow -Encoding UTF8 -NoNewline
+    $orderDriftDoctor = & powershell -NoProfile -ExecutionPolicy Bypass -File $cliScript `
+        doctor -TargetPath $genericPolicyRoot -Json 2>$null | ConvertFrom-Json
+    if (($orderDriftDoctor.blocking -join ' ') -match 'Spec Kit order') {
+        Write-Pass 'doctor blocks missing or reordered Spec Kit policy steps'
+    } else {
+        Write-Fail 'doctor must block missing or reordered Spec Kit policy steps'
+    }
+    Set-Content -LiteralPath $workflowPolicyPath -Value $generatedWorkflow -Encoding UTF8 -NoNewline
 
     $generatedSkills.authority.optional_executor_skills_may_replace_planning = $true
     $generatedSkills | ConvertTo-Json -Depth 8 | Set-Content `
@@ -634,12 +749,22 @@ foreach ($preset in $presetNames) {
     }
 
     $presetWorkflow = Get-Content (Join-Path $repoRoot "presets\$preset\.ai-workflow.yml") -Raw
-    $presetSkills = Get-Content (Join-Path $repoRoot "presets\$preset\.ai-skills.json") -Raw | ConvertFrom-Json
+    $presetSkillsText = Get-Content (Join-Path $repoRoot "presets\$preset\.ai-skills.json") -Raw
+    $presetSkills = $presetSkillsText | ConvertFrom-Json
     $presetAgents = Get-Content (Join-Path $repoRoot "presets\$preset\AGENTS.md") -Raw
+    $presetClaude = Get-Content (Join-Path $repoRoot "presets\$preset\CLAUDE.md") -Raw
+    $presetGuide = Get-Content (Join-Path $repoRoot "presets\$preset\PROJECT-WORKING-GUIDE.md") -Raw
+    $presetOrderDocuments = @($presetWorkflow, $presetSkillsText, $presetAgents, $presetClaude, $presetGuide)
+    $presetOrdersValid = @($presetOrderDocuments | Where-Object {
+        -not (Test-OrderedTokens -Content $_ -Tokens $specKitCommandOrder) -or
+        -not (Test-OrderedTokens -Content $_ -Tokens $specKitSkillOrder)
+    }).Count -eq 0
     if (($presetWorkflow -match 'planning:\s+spec-kit') -and
+        ($presetWorkflow -match 'implementation:\s+after-speckit-analyze') -and
         ($presetWorkflow -match 'require_before_implementation:\s+true') -and
         ($presetSkills.authority.optional_executor_skills_may_replace_planning -eq $false) -and
-        ($presetAgents -match 'must not replace Spec Kit')) {
+        ($presetAgents -match 'must not replace Spec\s+Kit') -and
+        $presetOrdersValid) {
         Write-Pass "preset/$preset enforces workflow authority"
     } else {
         Write-Fail "preset/$preset must enforce workflow authority"
@@ -653,6 +778,15 @@ foreach ($preset in $presetNames) {
         Write-Pass "preset/$preset uses UTF-8 without BOM"
     } else {
         Write-Fail "preset/$preset contains UTF-8 BOM files: $($presetBomFiles -join ', ')"
+    }
+
+    $presetCrFiles = @($presetFiles | Where-Object {
+        [System.IO.File]::ReadAllText((Join-Path $repoRoot "presets\$preset\$_")).Contains("`r")
+    })
+    if ($presetCrFiles.Count -eq 0) {
+        Write-Pass "preset/$preset uses repository LF line endings"
+    } else {
+        Write-Fail "preset/$preset contains CR line endings: $($presetCrFiles -join ', ')"
     }
 }
 
@@ -705,7 +839,10 @@ Write-Section "11. Format / Line-Count Sanity"
 # Guards against files being collapsed into a handful of very long lines
 # (e.g. real newlines stripped during a bad merge or copy/paste).
 $formatChecks = @(
-    @{ rel = 'README.md';                  minLines = 40 }
+    @{ rel = 'README.md';                  minLines = 100 }
+    @{ rel = 'templates\AGENTS.md';        minLines = 20 }
+    @{ rel = 'templates\CLAUDE.md';        minLines = 10 }
+    @{ rel = 'templates\PROJECT-WORKING-GUIDE.md'; minLines = 20 }
     @{ rel = 'templates\.ai-workflow.yml'; minLines = 20 }
     @{ rel = 'templates\.ai-skills.json';  minLines = 20 }
 )
@@ -729,8 +866,10 @@ $skillPolicy = Get-Content (Join-Path $repoRoot 'templates\.ai-skills.json') -Ra
 $workflowPolicy = Get-Content (Join-Path $repoRoot 'templates\.ai-workflow.yml') -Raw
 if (($skillPolicy.authority.startup -eq 'project-workflow') -and
     ($skillPolicy.authority.planning -eq 'spec-kit') -and
+    ($skillPolicy.authority.implementation -eq 'after-speckit-analyze') -and
     ($skillPolicy.authority.optional_executor_skills_may_replace_planning -eq $false) -and
     ($workflowPolicy -match 'workflow_authority:') -and
+    ($workflowPolicy -match 'implementation:\s+after-speckit-analyze') -and
     ($workflowPolicy -match 'require_before_implementation:\s+true')) {
     Write-Pass 'templates encode workflow authority and Spec Kit enforcement'
 } else {
@@ -754,7 +893,13 @@ if ($invalidGuardPolicies.Count -eq 0) {
 }
 
 $formatScope = @(
+    Get-Item (Join-Path $repoRoot 'README.md')
     Get-ChildItem (Join-Path $repoRoot 'docs') -File -Filter '*.md'
+    Get-Item (Join-Path $repoRoot 'templates\AGENTS.md')
+    Get-Item (Join-Path $repoRoot 'templates\CLAUDE.md')
+    Get-Item (Join-Path $repoRoot 'templates\PROJECT-WORKING-GUIDE.md')
+    Get-Item (Join-Path $repoRoot 'templates\.ai-workflow.yml')
+    Get-Item (Join-Path $repoRoot 'templates\.ai-skills.json')
     Get-ChildItem (Join-Path $repoRoot 'presets') -File -Recurse
     Get-ChildItem (Join-Path $repoRoot 'scripts') -File -Recurse -Filter '*.ps1'
 )
@@ -762,7 +907,9 @@ $collapsedFiles = [System.Collections.Generic.List[string]]::new()
 foreach ($file in $formatScope) {
     $lines = @(Get-Content -LiteralPath $file.FullName)
     $maxLength = ($lines | Measure-Object -Property Length -Maximum).Maximum
-    if (($lines.Count -lt 2) -or ($maxLength -gt 500)) {
+    $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+    $hasLineFeed = $bytes -contains 0x0A
+    if (($lines.Count -lt 2) -or (-not $hasLineFeed) -or ($maxLength -gt 500)) {
         $collapsedFiles.Add($file.FullName.Substring($repoRoot.Length + 1))
     }
 }
@@ -792,5 +939,5 @@ Write-Host " RESULTS: $pass passed | $warn warnings | $fail failed" -ForegroundC
 Write-Host "================================================`n" -ForegroundColor Cyan
 
 if ($fail -gt 0) { exit 1 }
-if ($warn -gt 0) { exit 0 }
+if ($warn -gt 0) { exit 1 }
 exit 0

@@ -24,7 +24,10 @@
 - Added doctor enforcement for missing or drifted Spec Kit and optional-skill precedence policy.
 - Reworked the README and user docs around empty folder, existing repo, audit-only, starter, WordPress, and active Spec Kit scenarios.
 - Added regression coverage for empty non-Git folders, empty Git repos, generic/WordPress conditional policy, Spec Kit state, anti-drift enforcement, JavaScript/TypeScript aliases, presets, and UTF-8 output.
-- Verification: `scripts/test-workflow.ps1` passed with 125 passes, 4 expected missing-YAML-parser warnings, and 0 failures; `git diff --check` passed with line-ending normalization notices only.
+- Correction pass added mandatory real YAML parsing, exact Spec Kit command and
+  skills-mode order checks, doctor enforcement, LF preset generation, and stronger
+  raw-file readability checks. Verification passed with 169 passes, 0 warnings,
+  and 0 failures.
 
 ### v0.3.0 production hardening (2026-06-29)
 

@@ -8,11 +8,43 @@ Run the startup sequence from `AGENTS.md` before planning, editing, writing code
 ## Authority and precedence
 
 - project-workflow: startup, orchestration, repository safety, verification, and handoff.
-- Spec Kit: clarify, spec, plan, and tasks for non-trivial work.
+- Spec Kit: constitution, specify, clarify, plan, checklist, tasks, analyze,
+  implement, and conditional converge for non-trivial work.
 - Guard skills: conditional safety checks.
 - Optional executor/build/debug skills: implementation help after active tasks exist.
 
 Do not substitute Superpowers or another planning workflow for Spec Kit unless the owner explicitly changes this decision.
+
+### Exact enforced Spec Kit order
+
+```text
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+```
+
+Codex skills-mode equivalent:
+
+```text
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+```
+
+Do not skip or reorder steps. Run `converge` when available and needed; otherwise
+record why it was not applicable.
 
 ## Task intake
 

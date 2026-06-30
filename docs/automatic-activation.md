@@ -26,9 +26,9 @@ status/branch/remotes/worktrees, detect platform/CI/project type, read workflow
 and skill policy, inspect Spec Kit and durable state, and report the mode and next
 step before implementation.
 
-For non-trivial work, the agent must use Spec Kit clarify/spec/plan/tasks before
-implementation. Optional workflow or executor skills cannot replace that planning
-authority. Conditional guards apply only when their project/risk condition matches.
+For non-trivial work, the agent must follow the exact Spec Kit order through
+analyze before implementation. Optional workflow or executor skills cannot replace
+that authority. Conditional guards apply only when their condition matches.
 
 ## Managed blocks preserve owner content
 

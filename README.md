@@ -73,7 +73,8 @@ Codex:
 
 ```text
 Use project-workflow to continue the active Spec Kit work. Read the constitution,
-spec, plan, tasks, progress, and decisions; report the next incomplete task first.
+spec, clarification, plan, checklist, tasks, analysis, progress, and decisions;
+report the next incomplete stage first.
 ```
 
 Claude Code:
@@ -112,6 +113,39 @@ startup prompt.
   allows it)
 - It does not let Superpowers or another optional skill replace Spec Kit planning
   unless the owner explicitly overrides the repository policy
+
+## Exact enforced Spec Kit order
+
+For non-trivial work, use this production order without skipping or reordering:
+
+```text
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+```
+
+Codex skills mode uses the equivalent order:
+
+```text
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+```
+
+Run `converge` only when that command is available and convergence is needed;
+record it as not applicable otherwise. Optional skills cannot replace any step.
 
 ## Quick install
 

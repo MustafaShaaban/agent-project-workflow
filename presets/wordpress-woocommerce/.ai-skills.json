@@ -5,10 +5,35 @@
                       "startup":  "project-workflow",
                       "planning":  "spec-kit",
                       "safety":  "conditional-guard-skills",
-                      "implementation":  "active-spec-tasks",
+                      "implementation":  "after-speckit-analyze",
                       "optional_executor_skills_may_replace_planning":  false,
                       "owner_override_required":  true
                   },
+    "spec_kit":  {
+                     "enforced_order":  [
+                                            "/speckit.constitution",
+                                            "/speckit.specify",
+                                            "/speckit.clarify",
+                                            "/speckit.plan",
+                                            "/speckit.checklist",
+                                            "/speckit.tasks",
+                                            "/speckit.analyze",
+                                            "/speckit.implement",
+                                            "/speckit.converge"
+                                        ],
+                     "codex_skills_mode_order":  [
+                                                     "$speckit-constitution",
+                                                     "$speckit-specify",
+                                                     "$speckit-clarify",
+                                                     "$speckit-plan",
+                                                     "$speckit-checklist",
+                                                     "$speckit-tasks",
+                                                     "$speckit-analyze",
+                                                     "$speckit-implement",
+                                                     "$speckit-converge"
+                                                 ],
+                     "converge":  "when-available-and-needed"
+                 },
     "skills":  {
                    "required":  [
                                     {

@@ -12,7 +12,7 @@ The self-test validates:
 
 1. **PowerShell syntax** - every `scripts/*.ps1` file is parsed by the PowerShell AST.
 2. **JSON validity and skill policy** - JSON parses and companion guard commands remain manual by default.
-3. **YAML validity** - a real parser is used when installed; otherwise structural checks produce warnings, never false passes.
+3. **YAML validity** - a real parser must parse templates, fixtures, and generated presets. The test fails when no parser is available or any file is invalid.
 4. **Fixture audits** - archetype and required-guard detection match each fixture.
 5. **Bootstrap safety** - observe-only mode writes nothing.
 6. **CLI smoke behavior** - dry-run/apply, lock files, automatic activation, and doctor output work.
@@ -23,8 +23,11 @@ The self-test validates:
 
 Exit codes:
 
-- `0` = all checks passed or only explicit YAML-parser warnings remain.
+- `0` = all checks passed with zero warnings and zero failures.
 - `1` = at least one failure.
+
+The test discovers `powershell-yaml`, `PSYaml`, or Python with PyYAML. GitHub
+Actions installs the pinned PyYAML version before running the suite.
 
 ## Test fixtures
 

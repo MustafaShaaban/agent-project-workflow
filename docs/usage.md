@@ -113,26 +113,58 @@ Expected behavior: zero writes. Use this when you want facts before deciding.
 ```text
 Use project-workflow to verify the repo is ready, then ask for approval to initialize
 Spec Kit for Codex and Claude Code. After approval, use Spec Kit to clarify the work
-and produce the spec, plan, and tasks. Do not implement until tasks exist.
+in the exact enforced order. Do not implement until the analyze stage passes.
 ```
 
 Expected behavior: project-workflow remains the startup authority. Spec Kit becomes
 the planning source of truth. Missing Spec Kit triggers an ask, never silent install.
 
+#### Exact enforced Spec Kit order
+
+```text
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+```
+
+Codex skills-mode equivalent:
+
+```text
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+```
+
+Do not skip or reorder steps. Use `converge` when available and needed; otherwise
+record why it was not applicable.
+
 ### Continue an active spec
 
 ```text
 Use project-workflow to continue the active Spec Kit work. Read the repo rules,
-PROGRESS.md, constitution, active spec, plan, and tasks. Report the next incomplete
-task before implementation and preserve unrelated changes.
+PROGRESS.md, constitution, active spec, clarification, plan, checklist, tasks, and
+analysis. Report the next incomplete stage and preserve unrelated changes.
 ```
 
 ### Implement after tasks exist
 
 ```text
 Use project-workflow to implement the next active Spec Kit task. Treat the spec,
-plan, and tasks as the planning source of truth. Optional executor skills may help
-with execution only; they must not replace or rewrite Spec Kit planning.
+clarification, plan, checklist, tasks, and analysis as the planning source of
+truth. Begin implementation only after analyze passes. Optional executor skills
+may help with execution only; they must not replace or rewrite Spec Kit stages.
 ```
 
 ## CLI: preview, then apply

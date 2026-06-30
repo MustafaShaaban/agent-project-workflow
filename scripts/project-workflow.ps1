@@ -104,7 +104,71 @@ function Get-RequiredSkills {
     }
 }
 
+function Get-SpecKitCommandOrder {
+    return @(
+        '/speckit.constitution',
+        '/speckit.specify',
+        '/speckit.clarify',
+        '/speckit.plan',
+        '/speckit.checklist',
+        '/speckit.tasks',
+        '/speckit.analyze',
+        '/speckit.implement',
+        '/speckit.converge'
+    )
+}
+
+function Get-SpecKitSkillOrder {
+    return @(
+        '$speckit-constitution',
+        '$speckit-specify',
+        '$speckit-clarify',
+        '$speckit-plan',
+        '$speckit-checklist',
+        '$speckit-tasks',
+        '$speckit-analyze',
+        '$speckit-implement',
+        '$speckit-converge'
+    )
+}
+
+function Test-OrderedPolicyTokens {
+    param([string]$Content, [string[]]$Tokens)
+
+    $searchFrom = 0
+    foreach ($token in $Tokens) {
+        $tokenIndex = $Content.IndexOf($token, $searchFrom, [System.StringComparison]::Ordinal)
+        if ($tokenIndex -lt 0) { return $false }
+        $searchFrom = $tokenIndex + $token.Length
+    }
+    return $true
+}
+
+function Test-ExactPolicySequence {
+    param([object[]]$Actual, [string[]]$Expected)
+
+    return ($Actual.Count -eq $Expected.Count) -and
+        (($Actual -join "`n") -ceq ($Expected -join "`n"))
+}
+
+function Get-SpecKitOrderText {
+    $commandText = (Get-SpecKitCommandOrder) -join "`n"
+    $skillText = (Get-SpecKitSkillOrder) -join "`n"
+@"
+Production commands:
+
+$commandText
+
+Codex skills mode:
+
+$skillText
+
+Do not skip or reorder steps. Run converge when available and needed; otherwise record why it was not applicable.
+"@
+}
+
 function Get-StartupSequenceText {
+$specKitOrder = Get-SpecKitOrderText
 @"
 For every project request, even if the user does not mention `project-workflow`, automatically follow the project-workflow startup sequence before planning, editing, writing code, changing docs, running commands, committing, pushing, or merging.
 
@@ -132,6 +196,10 @@ Startup sequence:
 20. State detected mode and recommended next step before implementation.
 
 Question rule: ask only useful questions that cannot be safely detected. Every question must include Detected, Recommended, Why, Alternatives, Impact, Question, and Default if you approve.
+
+Exact enforced Spec Kit order:
+
+$specKitOrder
 "@
 }
 
@@ -431,7 +499,7 @@ $startup
 - Preserve user changes and never rewrite history.
 - Do not edit generated, vendor, build, cache, or upload directories unless the owner explicitly requires it.
 - Use Spec Kit for non-trivial, multi-file, security, API, database, CI/CD, WordPress production, and WooCommerce work.
-- Spec Kit owns clarify, spec, plan, and tasks when enabled, requested, or detected.
+- Spec Kit owns every enforced stage when enabled, requested, or detected.
 - Do not use Superpowers or any similar planning workflow to replace Spec Kit unless the owner explicitly overrides this repository policy.
 - Optional executor, build, and debug skills may help only after active Spec Kit tasks exist.
 - Keep `PROGRESS.md` and `DECISIONS.md` current when progress or durable decisions change.
@@ -440,7 +508,9 @@ $startup
     $claudeBody = @"
 Read `AGENTS.md`, `.ai-workflow.yml`, `.ai-skills.json`, `.agent-workflow.lock.json`, and `PROJECT-WORKING-GUIDE.md`.
 
-Project-workflow owns startup and verification. Spec Kit owns clarify/spec/plan/tasks for non-trivial work. Optional executor, build, debug, Superpowers, or similar skills must not replace Spec Kit planning unless the owner explicitly overrides repository policy.
+Project-workflow owns startup and verification. Spec Kit owns the exact enforced
+stages for non-trivial work. Optional skills must not replace Spec Kit unless the
+owner explicitly overrides repository policy. Implementation starts after analyze.
 
 $startup
 "@
@@ -489,7 +559,7 @@ workflow:
 workflow_authority:
   startup: project-workflow
   planning: spec-kit
-  implementation: active-spec-tasks
+  implementation: after-speckit-analyze
   verification: project-workflow
   optional_executor_skills_may_replace_planning: false
 
@@ -504,10 +574,31 @@ spec_kit:
   use_for_non_trivial_work: true
   enforce_for_non_trivial_work: true
   require_before_implementation: true
+  enforced_order:
+    - "/speckit.constitution"
+    - "/speckit.specify"
+    - "/speckit.clarify"
+    - "/speckit.plan"
+    - "/speckit.checklist"
+    - "/speckit.tasks"
+    - "/speckit.analyze"
+    - "/speckit.implement"
+    - "/speckit.converge"
+  codex_skills_mode_order:
+    - "`$speckit-constitution"
+    - "`$speckit-specify"
+    - "`$speckit-clarify"
+    - "`$speckit-plan"
+    - "`$speckit-checklist"
+    - "`$speckit-tasks"
+    - "`$speckit-analyze"
+    - "`$speckit-implement"
+    - "`$speckit-converge"
+  converge: when-available-and-needed
 
 skills:
   install_mode: ask
-  approved_only_command: ".\scripts\project-workflow.ps1 install-skills -ApprovedOnly"
+  approved_only_command: '.\scripts\project-workflow.ps1 install-skills -ApprovedOnly'
 
 safety:
   dry_run_default: true
@@ -545,9 +636,14 @@ function Get-SkillsJson {
             startup = 'project-workflow'
             planning = 'spec-kit'
             safety = 'conditional-guard-skills'
-            implementation = 'active-spec-tasks'
+            implementation = 'after-speckit-analyze'
             optional_executor_skills_may_replace_planning = $false
             owner_override_required = $true
+        }
+        spec_kit = [ordered]@{
+            enforced_order = @(Get-SpecKitCommandOrder)
+            codex_skills_mode_order = @(Get-SpecKitSkillOrder)
+            converge = 'when-available-and-needed'
         }
         skills = [ordered]@{
             required = $required
@@ -562,6 +658,7 @@ function Get-SkillsJson {
 
 function Get-ConstitutionBody {
     param([string]$Archetype)
+    $specKitOrder = Get-SpecKitOrderText
     $generic = @"
 ## Source of truth
 
@@ -572,7 +669,7 @@ Latest owner instruction wins, then repo instructions, this constitution, active
 - Use one real Git root.
 - Preserve user work.
 - Use Spec Kit before code for non-trivial work.
-- Treat Spec Kit clarify/spec/plan/tasks as the planning source of truth.
+- Treat every enforced Spec Kit stage as the source of truth.
 - Do not let optional workflow or executor skills replace Spec Kit planning without an explicit owner override.
 - Run tests and guards before completion.
 - Keep docs synchronized with code.
@@ -580,6 +677,10 @@ Latest owner instruction wins, then repo instructions, this constitution, active
 - Do not edit generated/vendor/build/cache/upload outputs as source.
 - End with verification, recommended options, and mandatory NEXT STEP.
 - Ask recommendation-first questions only when detection cannot answer safely.
+
+## Exact enforced Spec Kit order
+
+$specKitOrder
 "@
     if ($Archetype -notmatch '^wordpress') { return $generic }
     return @"
@@ -607,6 +708,7 @@ $generic
 }
 
 function Get-WorkingGuideBody {
+$specKitOrder = Get-SpecKitOrderText
 @"
 ## Start
 
@@ -614,9 +716,17 @@ Run the startup sequence from `AGENTS.md`, classify the task as Tiny, Normal, or
 
 ## Authority
 
-Project-workflow owns startup and verification. Spec Kit owns clarify/spec/plan/tasks for non-trivial work. Conditional guards own safety checks. Optional executor, build, debug, Superpowers, or similar skills must not replace Spec Kit planning unless the owner explicitly overrides repository policy.
+Project-workflow owns startup and verification. Spec Kit owns the exact enforced
+stages for non-trivial work. Conditional guards own safety checks. Optional skills
+must not replace Spec Kit unless the owner explicitly overrides repository policy.
 
-Do not implement non-trivial work until active Spec Kit tasks exist. In an empty directory or missing Git root, resolve setup decisions, run doctor/audit, and stop with the recommended next step.
+Do not implement non-trivial work until checklist, tasks, and analyze complete. In
+an empty directory or missing Git root, resolve setup decisions, run doctor/audit,
+and stop with the recommended next step.
+
+## Exact enforced Spec Kit order
+
+$specKitOrder
 
 ## Task risk
 
@@ -748,10 +858,20 @@ function Invoke-Doctor {
             }
             if (($skills.authority.startup -eq 'project-workflow') -and
                 ($skills.authority.planning -eq 'spec-kit') -and
+                ($skills.authority.implementation -eq 'after-speckit-analyze') -and
                 ($skills.authority.optional_executor_skills_may_replace_planning -eq $false)) {
                 $passing.Add('skill precedence policy enforced')
             } else {
                 $blocking.Add('skill precedence policy is missing or allows optional skills to replace planning')
+                $score -= 12
+            }
+            $jsonCommandOrder = @($skills.spec_kit.enforced_order)
+            $jsonSkillOrder = @($skills.spec_kit.codex_skills_mode_order)
+            if ((Test-ExactPolicySequence -Actual $jsonCommandOrder -Expected (Get-SpecKitCommandOrder)) -and
+                (Test-ExactPolicySequence -Actual $jsonSkillOrder -Expected (Get-SpecKitSkillOrder))) {
+                $passing.Add('Spec Kit order policy enforced in .ai-skills.json')
+            } else {
+                $blocking.Add('Spec Kit order policy missing or reordered in .ai-skills.json')
                 $score -= 12
             }
         } catch {
@@ -764,10 +884,18 @@ function Invoke-Doctor {
         $workflowPolicy = Get-Content $workflowPath -Raw
         if (($workflowPolicy -match '(?m)^workflow_authority:\s*$') -and
             ($workflowPolicy -match '(?m)^\s+planning:\s*spec-kit\s*$') -and
+            ($workflowPolicy -match '(?m)^\s+implementation:\s*after-speckit-analyze\s*$') -and
             ($workflowPolicy -match '(?m)^\s+require_before_implementation:\s*true\s*$')) {
             $passing.Add('Spec Kit authority policy enforced')
         } else {
             $blocking.Add('Spec Kit authority policy missing from .ai-workflow.yml')
+            $score -= 12
+        }
+        if ((Test-OrderedPolicyTokens -Content $workflowPolicy -Tokens (Get-SpecKitCommandOrder)) -and
+            (Test-OrderedPolicyTokens -Content $workflowPolicy -Tokens (Get-SpecKitSkillOrder))) {
+            $passing.Add('Spec Kit order policy enforced in .ai-workflow.yml')
+        } else {
+            $blocking.Add('Spec Kit order policy missing or reordered in .ai-workflow.yml')
             $score -= 12
         }
     }

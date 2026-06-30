@@ -54,7 +54,7 @@ state precedence clearly.
 
 Detect it by checking whether the agent created planning artifacts outside the
 active Spec Kit spec/plan/tasks, skipped `.specify/`, or started implementation
-without active task IDs.
+without completing checklist, tasks, and analyze.
 
 Stop safely: do not delete the other skill's notes, do not continue coding, and
 do not initialize new tooling. Re-run project-workflow and reconcile only useful

@@ -31,15 +31,49 @@ Startup sequence:
 ## Workflow authority
 
 - `project-workflow` owns startup, repository detection, safety, verification, and handoff.
-- Spec Kit owns clarify, spec, plan, and tasks for non-trivial work when it is enabled, requested, or detected.
+- Spec Kit owns constitution, specify, clarify, plan, checklist, tasks, analyze,
+  implement, and conditional converge for non-trivial work.
 - Guard skills are safety authorities only when their project or risk condition applies.
-- Optional executor, build, debug, Superpowers, or similar skills may help only after active Spec Kit tasks exist.
+- Optional executor, build, debug, Superpowers, or similar skills may help only
+  after checklist, tasks, and analyze complete.
 - Do not use competing planning skills to replace Spec Kit unless the owner explicitly overrides this repository policy.
+
+### Exact enforced Spec Kit order
+
+```text
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+```
+
+Codex skills-mode equivalent:
+
+```text
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+```
+
+Do not skip or reorder steps. Run `converge` when available and needed; otherwise
+record why it was not applicable.
 
 ## Before implementation
 
 - Confirm setup is complete and report the active spec and task IDs.
-- For non-trivial work, stop if Spec Kit tasks do not exist. Ask to initialize or continue Spec Kit; never install it silently.
+- For non-trivial work, stop if checklist, tasks, or analyze is incomplete. Ask to
+  initialize or continue Spec Kit; never install it silently.
 - Do not move from an incomplete bootstrap or audit directly into application implementation.
 
 ## Empty directory or missing Git

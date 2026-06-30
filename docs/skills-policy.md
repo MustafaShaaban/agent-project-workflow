@@ -5,14 +5,47 @@
 | Authority | Owner | Scope |
 |---|---|---|
 | Startup | project-workflow | Root, Git, branch, platform, project type, setup, verification, handoff |
-| Planning | Spec Kit | Clarify, spec, plan, tasks for non-trivial work |
+| Planning | Spec Kit | Constitution, specify, clarify, plan, checklist, tasks, analyze, implement, and conditional converge |
 | Safety | Guard skills | Conditional code, test, docs, WordPress, and WooCommerce checks |
 | Execution | Optional helpers | Build, debug, or execute active Spec Kit tasks |
 
 Superpowers and similar workflow skills are optional executor/helpers in managed
-repositories. They may not replace Spec Kit clarify/spec/plan/tasks unless the
+repositories. They may not replace any enforced Spec Kit stage unless the
 owner explicitly overrides the repository policy. Record an override in durable
 project state so later agents do not guess.
+
+### Exact planning order
+
+Optional skills must preserve this command order:
+
+```text
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+```
+
+Codex skills mode must preserve the equivalent order:
+
+```text
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+```
+
+`converge` is conditional on availability and need. No executor skill may start
+implementation before checklist, tasks, and analyze are complete.
 
 ## Required and conditional skills
 

@@ -282,14 +282,46 @@ specify init . --integration claude
 specify init . --integration codex
 ```
 
-When Spec Kit exists, use: **specify / clarify → plan → tasks → implement → verify → handoff**
+When Spec Kit exists, enforce this production order:
+
+```text
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+```
+
+For Codex skills mode, enforce the equivalent order:
+
+```text
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+```
+
+Do not skip or reorder the first eight steps. Run `converge` after implementation
+when available and needed; otherwise record why it was not applicable. Then verify
+and hand off through project-workflow.
 
 ### Authority and anti-drift
 
-- Spec Kit is the planning and source-of-truth authority for non-trivial work when enabled, requested, or detected.
-- Implementation starts only after Spec Kit has produced active tasks.
+- Spec Kit is the source-of-truth authority for every enforced stage when enabled,
+  requested, or detected.
+- Implementation starts only after checklist, tasks, and analyze complete.
 - Guard skills are conditional safety authorities; they do not own planning.
-- Optional executor, build, debug, Superpowers, or similar skills may help execute active tasks but cannot replace Spec Kit clarify/spec/plan/tasks.
+- Optional executor, build, debug, Superpowers, or similar skills may help execute
+  active tasks but cannot replace any enforced Spec Kit stage.
 - Only an explicit owner override may change this precedence. Record that override in durable project state.
 - If another skill starts planning first, stop safely, preserve work, re-run project-workflow, and resume from the active Spec Kit state.
 

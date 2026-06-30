@@ -7,6 +7,55 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $presetRoot = Join-Path $repoRoot 'presets'
 $managedStart = '<!-- agent-project-workflow:start -->'
 $managedEnd = '<!-- agent-project-workflow:end -->'
+$specKitCommandOrder = @(
+    '/speckit.constitution',
+    '/speckit.specify',
+    '/speckit.clarify',
+    '/speckit.plan',
+    '/speckit.checklist',
+    '/speckit.tasks',
+    '/speckit.analyze',
+    '/speckit.implement',
+    '/speckit.converge'
+)
+$specKitSkillOrder = @(
+    '$speckit-constitution',
+    '$speckit-specify',
+    '$speckit-clarify',
+    '$speckit-plan',
+    '$speckit-checklist',
+    '$speckit-tasks',
+    '$speckit-analyze',
+    '$speckit-implement',
+    '$speckit-converge'
+)
+$specKitOrderText = @'
+Production commands:
+
+/speckit.constitution
+/speckit.specify
+/speckit.clarify
+/speckit.plan
+/speckit.checklist
+/speckit.tasks
+/speckit.analyze
+/speckit.implement
+/speckit.converge
+
+Codex skills mode:
+
+$speckit-constitution
+$speckit-specify
+$speckit-clarify
+$speckit-plan
+$speckit-checklist
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge
+
+Do not skip or reorder steps. Run converge when available and needed; otherwise record why it was not applicable.
+'@
 
 $presets = @(
     @{ name = 'generic'; wordpress = $false; woo = $false; description = 'Generic software project workflow.' }
@@ -24,7 +73,7 @@ function Set-GeneratedFile {
     $directory = Split-Path -Parent $Path
     if (-not (Test-Path $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-    $normalizedContent = $Content.TrimEnd("`r", "`n") + "`n"
+    $normalizedContent = (($Content -replace "`r`n", "`n") -replace "`r", "`n").TrimEnd("`n") + "`n"
     [System.IO.File]::WriteAllText($Path, $normalizedContent, $utf8NoBom)
 }
 
@@ -54,9 +103,14 @@ foreach ($preset in $presets) {
             startup = 'project-workflow'
             planning = 'spec-kit'
             safety = 'conditional-guard-skills'
-            implementation = 'active-spec-tasks'
+            implementation = 'after-speckit-analyze'
             optional_executor_skills_may_replace_planning = $false
             owner_override_required = $true
+        }
+        spec_kit = [ordered]@{
+            enforced_order = $specKitCommandOrder
+            codex_skills_mode_order = $specKitSkillOrder
+            converge = 'when-available-and-needed'
         }
         skills = [ordered]@{
             required = @($requiredSkills | ForEach-Object {
@@ -83,7 +137,7 @@ workflow:
 workflow_authority:
   startup: project-workflow
   planning: spec-kit
-  implementation: active-spec-tasks
+  implementation: after-speckit-analyze
   verification: project-workflow
   optional_executor_skills_may_replace_planning: false
 branching:
@@ -95,6 +149,27 @@ spec_kit:
   use_for_non_trivial_work: true
   enforce_for_non_trivial_work: true
   require_before_implementation: true
+  enforced_order:
+    - "/speckit.constitution"
+    - "/speckit.specify"
+    - "/speckit.clarify"
+    - "/speckit.plan"
+    - "/speckit.checklist"
+    - "/speckit.tasks"
+    - "/speckit.analyze"
+    - "/speckit.implement"
+    - "/speckit.converge"
+  codex_skills_mode_order:
+    - "`$speckit-constitution"
+    - "`$speckit-specify"
+    - "`$speckit-clarify"
+    - "`$speckit-plan"
+    - "`$speckit-checklist"
+    - "`$speckit-tasks"
+    - "`$speckit-analyze"
+    - "`$speckit-implement"
+    - "`$speckit-converge"
+  converge: when-available-and-needed
 skills:
   install_mode: ask
 safety:
@@ -111,7 +186,11 @@ For every project request, even if the user does not mention `project-workflow`,
 
 Use one real Git root, preserve user work, protect generated/vendor/build/cache/upload paths, use Spec Kit for non-trivial work, update progress/decisions, run guards, and end with mandatory NEXT STEP.
 
-Project-workflow owns startup and verification. Spec Kit owns clarify/spec/plan/tasks. Guard skills own conditional safety. Optional executor, build, debug, Superpowers, or similar skills must not replace Spec Kit planning unless the owner explicitly overrides this policy. Do not implement non-trivial work before active Spec Kit tasks exist.
+Project-workflow owns startup and verification. Spec Kit owns the exact enforced
+stages. Guard skills own conditional safety. Optional skills must not replace Spec
+Kit unless the owner explicitly overrides this policy. Implement only after analyze.
+
+$specKitOrderText
 $managedEnd
 
 ## Project-specific notes
@@ -122,6 +201,8 @@ $managedEnd
 
 $managedStart
 Read `AGENTS.md`, `.ai-workflow.yml`, `.ai-skills.json`, `.agent-workflow.lock.json`, and `PROJECT-WORKING-GUIDE.md`. Automatically follow project-workflow for every request. Use Spec Kit as the non-trivial planning authority; optional skills must not replace it.
+
+$specKitOrderText
 $managedEnd
 
 ## Project-specific notes
@@ -133,7 +214,11 @@ $managedEnd
 $managedStart
 Resolve the real root; inspect status, branch, remotes, and worktrees; detect platform, CI, and archetype; read workflow, lock, instruction, progress, decision, constitution, and active-spec files; state mode and recommended next step.
 
-Classify tasks as Tiny, Normal, or High-risk. Non-trivial work requires Spec Kit clarify/spec/plan/tasks before implementation. Optional executor skills may help only after active tasks exist.
+Classify tasks as Tiny, Normal, or High-risk. Non-trivial work requires every
+enforced Spec Kit stage through analyze before implementation. Optional executor
+skills may help only after analyze passes.
+
+$specKitOrderText
 $managedEnd
 
 ## Project-specific notes
@@ -197,6 +282,8 @@ Checkout, orders, payments, shipping, tax, customer data, and PII are high-risk.
 
 $managedStart
 Use the source-of-truth hierarchy, durable progress/decisions, Spec Kit before non-trivial code, tests/guards before completion, docs with code, CI awareness, branch safety, one real root, recommendation-first questions, and mandatory handoff/NEXT STEP.
+
+$specKitOrderText
 $wordpressRules$wooRules
 $managedEnd
 

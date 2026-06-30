@@ -28,7 +28,7 @@ workflow:
 workflow_authority:
   startup: project-workflow
   planning: spec-kit
-  implementation: active-spec-tasks
+  implementation: after-speckit-analyze
   verification: project-workflow
   optional_executor_skills_may_replace_planning: false
 
@@ -37,6 +37,27 @@ spec_kit:
   mode: ask-to-initialize
   enforce_for_non_trivial_work: true
   require_before_implementation: true
+  enforced_order:
+    - "/speckit.constitution"
+    - "/speckit.specify"
+    - "/speckit.clarify"
+    - "/speckit.plan"
+    - "/speckit.checklist"
+    - "/speckit.tasks"
+    - "/speckit.analyze"
+    - "/speckit.implement"
+    - "/speckit.converge"
+  codex_skills_mode_order:
+    - "$speckit-constitution"
+    - "$speckit-specify"
+    - "$speckit-clarify"
+    - "$speckit-plan"
+    - "$speckit-checklist"
+    - "$speckit-tasks"
+    - "$speckit-analyze"
+    - "$speckit-implement"
+    - "$speckit-converge"
+  converge: when-available-and-needed
 
 branching:
   # git-flow     - feature/fix/chore from develop; release/hotfix with merge-back
