@@ -1,5 +1,7 @@
 # agent-project-workflow
 
+<!-- raw-readability: LF-preserved -->
+
 A portable, professional AI project workflow system for software repositories.
 It provides the global `project-workflow` skill, workflow profiles, platform
 adapters, guard scripts, PR templates, and project starter templates that work

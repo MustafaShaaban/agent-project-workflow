@@ -1,4 +1,5 @@
 # AI Workflow Configuration
+# raw-readability: LF-preserved
 # Copy this file to your project root as .ai-workflow.yml
 # Adjust values for your project. All fields have safe defaults.
 

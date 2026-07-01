@@ -1,5 +1,7 @@
 # Spec Kit authority and enforcement
 
+<!-- raw-readability: LF-preserved -->
+
 Project-workflow and Spec Kit have separate jobs:
 
 - project-workflow owns startup, repository detection, safety, verification, and handoff.
