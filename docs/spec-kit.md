@@ -1,7 +1,5 @@
 # Spec Kit authority and enforcement
 
-<!-- raw-readability: LF-preserved -->
-
 Project-workflow and Spec Kit have separate jobs:
 
 - project-workflow owns startup, repository detection, safety, verification, and handoff.
@@ -9,6 +7,12 @@ Project-workflow and Spec Kit have separate jobs:
   implement, and conditional converge for non-trivial work.
 - Guard skills enforce conditional safety rules.
 - Optional executor/build/debug skills help only after active Spec Kit tasks exist.
+
+## Source file format
+
+Repository documentation and configuration templates use UTF-8 without a
+byte-order mark and physical LF (`0x0A`) line endings. The workflow and skills
+templates publish this contract as machine-readable `file_format` metadata.
 
 For non-trivial work, implementation begins only after Spec Kit checklist, tasks,
 and analyze stages complete. Superpowers or any similar workflow skill cannot replace Spec Kit

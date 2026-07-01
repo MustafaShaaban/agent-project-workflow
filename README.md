@@ -1,7 +1,5 @@
 # agent-project-workflow
 
-<!-- raw-readability: LF-preserved -->
-
 A portable, professional AI project workflow system for software repositories.
 It provides the global `project-workflow` skill, workflow profiles, platform
 adapters, guard scripts, PR templates, and project starter templates that work
@@ -389,6 +387,10 @@ For a focused byte-level check of GitHub raw readability and hidden Unicode:
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-raw-readability.ps1
 ```
+
+The source files are stored as UTF-8 without a byte-order mark and use physical
+LF (`0x0A`) bytes for line endings. The workflow and skills templates expose the
+same contract through their `file_format` metadata.
 
 This check reports normalized line counts for the primary README, Spec Kit guide,
 workflow YAML, and skills JSON. It rejects collapsed content, embedded Markdown

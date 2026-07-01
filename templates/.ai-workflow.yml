@@ -1,7 +1,10 @@
 # AI Workflow Configuration
-# raw-readability: LF-preserved
 # Copy this file to your project root as .ai-workflow.yml
 # Adjust values for your project. All fields have safe defaults.
+
+file_format:
+  encoding: utf-8
+  line_endings: lf
 
 project:
   name: "[project-name]"

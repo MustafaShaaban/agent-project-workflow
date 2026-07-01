@@ -1,8 +1,11 @@
 {
-
   "version": "1.0",
   "description": "Machine-readable skill policy for project-workflow managed repositories.",
   "install_mode": "ask",
+  "file_format": {
+    "encoding": "utf-8",
+    "line_endings": "lf"
+  },
   "authority": {
     "startup": "project-workflow",
     "planning": "spec-kit",
