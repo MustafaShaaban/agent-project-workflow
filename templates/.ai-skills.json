@@ -2,9 +2,10 @@
   "version": "1.0",
   "description": "Machine-readable skill policy for project-workflow managed repositories.",
   "install_mode": "ask",
-  "file_format": {
-    "encoding": "utf-8",
-    "line_endings": "lf"
+  "install_rules": {
+    "approved_only": "Install or print only skills with install_approved=true and a documented install_command.",
+    "manual": "Unknown, missing, or unapproved commands must be shown as manual steps.",
+    "precedence": "Optional executor, build, debug, Superpowers, or similar workflow skills cannot replace Spec Kit clarify/spec/plan/tasks unless the owner explicitly overrides the repository policy."
   },
   "authority": {
     "startup": "project-workflow",
@@ -13,31 +14,6 @@
     "implementation": "after-speckit-analyze",
     "optional_executor_skills_may_replace_planning": false,
     "owner_override_required": true
-  },
-  "spec_kit": {
-    "enforced_order": [
-      "/speckit.constitution",
-      "/speckit.specify",
-      "/speckit.clarify",
-      "/speckit.plan",
-      "/speckit.checklist",
-      "/speckit.tasks",
-      "/speckit.analyze",
-      "/speckit.implement",
-      "/speckit.converge"
-    ],
-    "codex_skills_mode_order": [
-      "$speckit-constitution",
-      "$speckit-specify",
-      "$speckit-clarify",
-      "$speckit-plan",
-      "$speckit-checklist",
-      "$speckit-tasks",
-      "$speckit-analyze",
-      "$speckit-implement",
-      "$speckit-converge"
-    ],
-    "converge": "when-available-and-needed"
   },
   "skills": {
     "required": [
@@ -126,9 +102,29 @@
       }
     ]
   },
-  "install_rules": {
-    "approved_only": "Install or print only skills with install_approved=true and a documented install_command.",
-    "manual": "Unknown, missing, or unapproved commands must be shown as manual steps.",
-    "precedence": "Optional executor, build, debug, Superpowers, or similar workflow skills cannot replace Spec Kit clarify/spec/plan/tasks unless the owner explicitly overrides the repository policy."
+  "spec_kit": {
+    "enforced_order": [
+      "/speckit.constitution",
+      "/speckit.specify",
+      "/speckit.clarify",
+      "/speckit.plan",
+      "/speckit.checklist",
+      "/speckit.tasks",
+      "/speckit.analyze",
+      "/speckit.implement",
+      "/speckit.converge"
+    ],
+    "codex_skills_mode_order": [
+      "$speckit-constitution",
+      "$speckit-specify",
+      "$speckit-clarify",
+      "$speckit-plan",
+      "$speckit-checklist",
+      "$speckit-tasks",
+      "$speckit-analyze",
+      "$speckit-implement",
+      "$speckit-converge"
+    ],
+    "converge": "when-available-and-needed"
   }
 }

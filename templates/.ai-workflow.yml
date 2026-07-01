@@ -1,13 +1,10 @@
+---
 # AI Workflow Configuration
 # Copy this file to your project root as .ai-workflow.yml
 # Adjust values for your project. All fields have safe defaults.
 
-file_format:
-  encoding: utf-8
-  line_endings: lf
-
 project:
-  name: "[project-name]"
+  name: '[project-name]'
   # auto | wordpress | php | laravel | js | ts | react | vue | svelte | python | dotnet | unknown
   type: auto
 
@@ -42,25 +39,25 @@ spec_kit:
   enforce_for_non_trivial_work: true
   require_before_implementation: true
   enforced_order:
-    - "/speckit.constitution"
-    - "/speckit.specify"
-    - "/speckit.clarify"
-    - "/speckit.plan"
-    - "/speckit.checklist"
-    - "/speckit.tasks"
-    - "/speckit.analyze"
-    - "/speckit.implement"
-    - "/speckit.converge"
+    - '/speckit.constitution'
+    - '/speckit.specify'
+    - '/speckit.clarify'
+    - '/speckit.plan'
+    - '/speckit.checklist'
+    - '/speckit.tasks'
+    - '/speckit.analyze'
+    - '/speckit.implement'
+    - '/speckit.converge'
   codex_skills_mode_order:
-    - "$speckit-constitution"
-    - "$speckit-specify"
-    - "$speckit-clarify"
-    - "$speckit-plan"
-    - "$speckit-checklist"
-    - "$speckit-tasks"
-    - "$speckit-analyze"
-    - "$speckit-implement"
-    - "$speckit-converge"
+    - '$speckit-constitution'
+    - '$speckit-specify'
+    - '$speckit-clarify'
+    - '$speckit-plan'
+    - '$speckit-checklist'
+    - '$speckit-tasks'
+    - '$speckit-analyze'
+    - '$speckit-implement'
+    - '$speckit-converge'
   converge: when-available-and-needed
 
 branching:
@@ -77,11 +74,11 @@ branching:
   integration_branch: develop
 
   allowed_work_branch_patterns:
-    - "feature/*"
-    - "fix/*"
-    - "chore/*"
-    - "hotfix/*"
-    - "release/*"
+    - 'feature/*'
+    - 'fix/*'
+    - 'chore/*'
+    - 'hotfix/*'
+    - 'release/*'
 
 agent_safety:
   require_real_root: true
