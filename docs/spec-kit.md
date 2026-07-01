@@ -2,15 +2,20 @@
 
 Project-workflow and Spec Kit have separate jobs:
 
-- project-workflow owns startup, repository detection, safety, verification, and handoff.
-- Spec Kit owns constitution, specify, clarify, plan, checklist, tasks, analyze,
-  implement, and conditional converge for non-trivial work.
+- project-workflow owns startup, repository detection,
+  safety, verification, and handoff.
+- Spec Kit owns constitution, specify, clarify, plan,
+  checklist, tasks, analyze, implement, and conditional
+  converge for non-trivial work.
 - Guard skills enforce conditional safety rules.
-- Optional executor/build/debug skills help only after active Spec Kit tasks exist.
+- Optional executor/build/debug skills help only after
+  active Spec Kit tasks exist.
 
-For non-trivial work, implementation begins only after Spec Kit checklist, tasks,
-and analyze stages complete. Superpowers or any similar workflow skill cannot replace Spec Kit
-planning unless the project owner explicitly overrides that policy.
+For non-trivial work, implementation begins only after Spec
+Kit checklist, tasks, and analyze stages complete.
+Superpowers or any similar workflow skill cannot replace
+Spec Kit planning unless the project owner explicitly
+overrides that policy.
 
 ## Exact enforced Spec Kit order
 
@@ -42,19 +47,22 @@ $speckit-implement
 $speckit-converge
 ```
 
-Do not skip or reorder the first eight steps. Run `converge` after implementation
-when it is available and the work needs convergence; otherwise record that it was
-not available or not needed. Optional executor skills can assist only within the
-active implementation tasks.
+Do not skip or reorder the first eight steps. Run `converge`
+after implementation when it is available and the work needs
+convergence; otherwise record that it was not available or
+not needed. Optional executor skills can assist only within
+the active implementation tasks.
 
 ## Missing Spec Kit
 
-Missing tooling triggers an ask, not an install. The agent should report whether
-`.specify/`, the constitution, active specs, and the `specify` command exist. It
-must explain the recommended initialization command and wait for approval.
+Missing tooling triggers an ask, not an install. The agent
+should report whether `.specify/`, the constitution, active
+specs, and the `specify` command exist. It must explain the
+recommended initialization command and wait for approval.
 
-The initializer records states such as `disabled`, `requested-unavailable`,
-`existing-preserved`, `available-dry-run`, and `initialized` in the lock file.
+The initializer records states such as `disabled`,
+`requested-unavailable`, `existing-preserved`,
+`available-dry-run`, and `initialized` in the lock file.
 Existing `.specify/` state is preserved.
 
 ## Initialize Spec Kit
@@ -71,8 +79,8 @@ After approval, check current integration identifiers:
 specify integration list
 ```
 
-The appropriate installed Spec Kit version may then support integrations such as
-`codex` or `claude`.
+The appropriate installed Spec Kit version may then support
+integrations such as `codex` or `claude`.
 
 ## Create the first spec
 
@@ -99,5 +107,6 @@ notes into the active Spec Kit stages, do not let Superpowers or another skill
 replace them, and wait before implementation if checklist, tasks, or analyze is missing.
 ```
 
-Tiny throwaway work may explicitly use a minimal workflow without Spec Kit. That
-is an owner decision, not an optional skill's decision.
+Tiny throwaway work may explicitly use a minimal workflow
+without Spec Kit. That is an owner decision, not an optional
+skill's decision.
